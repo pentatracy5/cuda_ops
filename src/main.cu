@@ -75,10 +75,11 @@ void run_reduce_sum(unsigned int version)
 	output.to_device();
 
 	int num_threads = reduce_sum::get_num_threads(N, version);
+	int shared_mem_size = reduce_sum::get_shared_mem_size(THREADS_PER_BLOCK, version);
 
 	for (size_t i = 0; i < WARMUP; i++)
 	{
-		CUDA_LAUNCH(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK)(input.device(), output.device(), N);
+		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK, shared_mem_size)(input.device(), output.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
@@ -90,7 +91,7 @@ void run_reduce_sum(unsigned int version)
 
 	for (size_t i = 0; i < NREPEATS; i++)
 	{
-		CUDA_LAUNCH(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK)(input.device(), output.device(), N);
+		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK, shared_mem_size)(input.device(), output.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
