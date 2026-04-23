@@ -11,7 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="src\kernel.cu" />
+    <CudaCompile Include="src\elementwise_add.cu" />
+    <CudaCompile Include="src\reduce_sum.cu" />
     <CudaCompile Include="src\utils.cu" />
   </ItemGroup>
   <ItemGroup>

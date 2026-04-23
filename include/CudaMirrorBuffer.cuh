@@ -31,7 +31,7 @@ public:
         cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
         CHECK_CUDA_ERROR("cudaMalloc failed");
 
-        CUDA_LAUNCH(construct_device_array<T>, (size_ + 255) / 256, 256)(d_ptr_, size_);
+        CUDA_LAUNCH(construct_device_array<T>, (size_ + 1023) / 1024, 1024)(d_ptr_, size_);
         cudaDeviceSynchronize();
         CHECK_CUDA_ERROR("construct device array failed");
     }

@@ -15,6 +15,7 @@
 #define CUDA_LAUNCH(kernel, n_threads, threads_per_block)										kernel
 #define CUDA_LAUNCH_SHAREDMEM(kernel, n_threads, threads_per_block, shared_mem)			    	kernel
 #define CUDA_LAUNCH_SHAREDMEM_STREAM(kernel, n_threads, threads_per_block, shared_mem, stream)	kernel
+float atomicAdd(float* address, float val);
 
 #endif
 

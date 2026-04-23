@@ -23,12 +23,12 @@ void random_init_array(float* array, const int size)
 		array[i] = dist(engine);
 }
 
-void compare_array(float* c, float* ref, const int size, const float tolerance)
+void compare_array(float* output, float* ref, const int size, const float tolerance)
 {
 	for (int i = 0; i < size; i++)
-		if (fabs(c[i] - ref[i]) > tolerance)
+		if (fabs(output[i] - ref[i]) > tolerance)
 		{
-			cout << "Error: c(" << i << ") = " << c[i] << ", but expected " << ref[i] << endl;
+			cout << "Error: output(" << i << ") = " << output[i] << ", but expected " << ref[i] << endl;
 			return;
 		}
 	return;

@@ -9,13 +9,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="src\kernel.cu">
+    <CudaCompile Include="src\elementwise_add.cu">
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\main.cu">
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\utils.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\reduce_sum.cu">
       <Filter>src</Filter>
     </CudaCompile>
   </ItemGroup>
