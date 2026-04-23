@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{a01e8c5c-8875-43b0-aab4-37fbe40601ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{16925a4d-e258-41ef-a464-6861711c9c07}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\kernel.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\main.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\utils.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\kernel.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\CudaMirrorBuffer.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\define.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\config.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utils.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
