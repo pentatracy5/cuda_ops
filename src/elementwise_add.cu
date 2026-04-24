@@ -15,15 +15,18 @@ namespace elementwise_add
         return 3 * size * sizeof(float);
     }
 
-    int get_num_threads(const int size, const unsigned int version)
+    void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block) 
     {
+        threads_per_block = 1024;
         if (0 == version)
-            return size;
-        if (1 == version)
-            return size / 2;
-        if (2 == version)
-            return size / 4;
-        return 0;
+            num_threads = size;
+        else if (1 == version)
+            num_threads = size / 2;
+        else if (2 == version)
+            num_threads = size / 4;
+        else
+            num_threads = 0;
+        return;
     }
 
     __global__ void no_vectorize(float* a, float* b, float* c, const int size)

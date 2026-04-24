@@ -8,7 +8,7 @@ namespace elementwise_add
 
 	int get_bytes_transferred(const int size);
 
-	int get_num_threads(const int size, const unsigned int version);
+	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
 
 	__global__ void no_vectorize(float* a, float* b, float* c, const int size);
 
@@ -27,15 +27,15 @@ namespace reduce_sum
 
 	int get_bytes_transferred(const int size);
 
-	int get_num_threads(const int size, const unsigned int version);
-
-	int get_shared_mem_size(const int threads_per_block, const unsigned int version);
+	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* input, float* output, const int size);
 
 	__global__ void v1(float* input, float* output, const int size);
 
+	__global__ void v2(float* input, float* output, const int size);
+
 	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v0, v1 };
+	static const Kernel kernels[]{ v0, v1, v2 };
 }

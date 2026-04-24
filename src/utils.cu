@@ -10,11 +10,6 @@ using std::uniform_real_distribution;
 using std::cout;
 using std::endl;
 
-void constant_val_init_array(float* array, const int size, const float val)
-{
-	fill(array, array + size, val);
-}
-
 void random_init_array(float* array, const int size)
 {
 	mt19937 engine(random_device{}());

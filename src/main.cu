@@ -16,18 +16,19 @@ void run_elementwise_add(unsigned int version)
 	CudaMirrorBuffer<float> a(N);
 	CudaMirrorBuffer<float> b(N);
 	CudaMirrorBuffer<float> c(N);
-	CudaMirrorBuffer<float> ref(N);
 
 	random_init_array(a.host(), N);
 	random_init_array(b.host(), N);
 	a.to_device();
 	b.to_device();
 
-	int num_threads = elementwise_add::get_num_threads(N, version);
+	int num_threads;
+	int threads_per_block;
+	elementwise_add::get_kernel_launch_params(N, version, num_threads, threads_per_block);
 
 	for (size_t i = 0; i < WARMUP; i++)
 	{
-		CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, THREADS_PER_BLOCK)(a.device(), b.device(), c.device(), N);
+		CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
@@ -39,7 +40,7 @@ void run_elementwise_add(unsigned int version)
 
 	for (size_t i = 0; i < NREPEATS; i++)
 	{
-		CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, THREADS_PER_BLOCK)(a.device(), b.device(), c.device(), N);
+		CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
@@ -51,11 +52,10 @@ void run_elementwise_add(unsigned int version)
 
 	float* a_host = a.host();
 	float* b_host = b.host();
-	float* ref_host = ref.host();
 	for (int i = 0; i < N; i++)
-		ref_host[i] = a_host[i] + b_host[i];
+		a_host[i] += b_host[i];
 
-	compare_array(c.host(), ref_host, N, TOLERANCE);
+	compare_array(c.host(), a_host, N, TOLERANCE);
 
 	float elapsed_time = milliseconds / NREPEATS;
 	cout << "Memory Bandwidth: " << elementwise_add::get_bytes_transferred(N) / 1e6 / elapsed_time << " GB/s" << endl;
@@ -66,20 +66,19 @@ void run_reduce_sum(unsigned int version)
 {
 	CudaMirrorBuffer<float> input(N);
 	CudaMirrorBuffer<float> output(1);
-	CudaMirrorBuffer<float> ref(1);
 
 	random_init_array(input.host(), N);
-	constant_val_init_array(output.host(), 1, 0);
-	constant_val_init_array(ref.host(), 1, 0);
 	input.to_device();
-	output.to_device();
 
-	int num_threads = reduce_sum::get_num_threads(N, version);
-	int shared_mem_size = reduce_sum::get_shared_mem_size(THREADS_PER_BLOCK, version);
+	int num_threads;
+	int threads_per_block;
+	int shared_mem_bytes;
+	reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
 	for (size_t i = 0; i < WARMUP; i++)
 	{
-		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK, shared_mem_size)(input.device(), output.device(), N);
+		output.memset(0);
+		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
@@ -91,7 +90,8 @@ void run_reduce_sum(unsigned int version)
 
 	for (size_t i = 0; i < NREPEATS; i++)
 	{
-		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, THREADS_PER_BLOCK, shared_mem_size)(input.device(), output.device(), N);
+		output.memset(0);
+		CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
 		CHECK_CUDA_ERROR("run kernel failed");
 	}
 
@@ -101,13 +101,21 @@ void run_reduce_sum(unsigned int version)
 
 	output.to_host();
 
+	//避免大数吞小数
 	float* input_host = input.host();
-	float* ref_host = ref.host();
-	for (size_t i = 0; i < WARMUP + NREPEATS; i++)
-		for (int idx = 0; idx < N; idx++)
-			ref_host[0] += input_host[idx];
+	int remainder = N & 1;
+	int stride = N >> 1;
+	do
+	{
+		for (size_t i = 0; i < stride; i++)
+			input_host[i] += input_host[i + stride];
+		if (remainder)
+			input_host[0] += input_host[2 * stride];
+		remainder = stride & 1;
+		stride = stride >> 1;
+	} while (stride > 0);
 
-	compare_array(output.host(), ref_host, 1, TOLERANCE);
+	compare_array(output.host(), input_host, 1, TOLERANCE);
 
 	float elapsed_time = milliseconds / NREPEATS;
 	cout << "Memory Bandwidth: " << reduce_sum::get_bytes_transferred(N) / 1e6 / elapsed_time << " GB/s" << endl;

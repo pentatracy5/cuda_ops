@@ -15,6 +15,14 @@ __global__ void construct_device_array(T* ptr, size_t n)
 }
 
 template<typename T>
+__global__ void constant_val_set_kernel(T* ptr, size_t n, T val)
+{
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < n)
+        ptr[idx] = val;
+}
+
+template<typename T>
 class CudaMirrorBuffer
 {
 public:
@@ -154,6 +162,24 @@ public:
         std::swap(size_, other.size_);
         std::swap(h_ptr_, other.h_ptr_);
         std::swap(d_ptr_, other.d_ptr_);
+    }
+
+    void memset(int value)
+    {
+        if (empty())
+            return;
+        std::memset(h_ptr_, value, size_ * sizeof(T));
+        cudaMemset(d_ptr_, value, size_ * sizeof(T));
+        CHECK_CUDA_ERROR("cudaMemset failed");
+    }
+
+    void constant_val_set(const T& val)
+    {
+        if (empty())
+            return;
+        std::fill(h_ptr_, h_ptr_ + size_, val);
+        CUDA_LAUNCH(constant_val_set_kernel<T>, (size_ + 1023) / 1024, 1024)(d_ptr_, size_, val);
+        CHECK_CUDA_ERROR("constant_val_set kernel failed");
     }
 
 private:

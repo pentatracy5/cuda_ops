@@ -16,24 +16,30 @@ namespace reduce_sum
         return (size + 1) * sizeof(float);
     }
 
-    int get_num_threads(const int size, const unsigned int version)
+    void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
     {
+        threads_per_block = 1024;
         if (0 == version)
-            return 1;
-        if (1 == version)
-            return size;
-        return 0;
-    }
-
-    int get_shared_mem_size(const int threads_per_block, const unsigned int version)
-    {
-        if (0 == version)
-            return 0;
-        if (1 == version)
-            return 0;
-        if (2 == version)
-            return threads_per_block;
-        return 0;
+        {
+            num_threads = 1;
+            shared_mem_bytes = 0;
+        }
+        else if (1 == version)
+        {
+            num_threads = size;
+            shared_mem_bytes = 0;
+        }
+        else if (2 == version)
+        {
+            num_threads = size;
+            shared_mem_bytes = threads_per_block * sizeof(float);
+        }
+        else
+        {
+            num_threads = 0;
+            shared_mem_bytes = 0;
+        }
+        return;
     }
 
     __global__ void v0(float* input, float* output, const int size)
@@ -41,9 +47,10 @@ namespace reduce_sum
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= 1)
             return;
-
+        float sum = 0.;
         for (int i = 0; i < size; i++)
-            output[0] += input[i];
+            sum += input[i];
+        output[0] += sum;
     } 
 
     __global__ void v1(float* input, float* output, const int size)
@@ -51,7 +58,25 @@ namespace reduce_sum
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= size)
             return;
-
         atomicAdd(output, input[idx]);
+    }
+
+    __global__ void v2(float* input, float* output, const int size)
+    {
+        extern __shared__ float mem[];
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        int tid = threadIdx.x;
+        int stride = blockDim.x;
+        mem[tid] = idx >= size ? 0.f : input[idx];
+        __syncthreads();
+        while (stride > 1)
+        {
+            stride = stride >> 1;
+            if (tid >= stride)
+                return;
+            mem[tid] += mem[tid + stride];
+            __syncthreads();
+        }
+        atomicAdd(output, mem[0]);
     }
 }
