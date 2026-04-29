@@ -39,7 +39,7 @@ public:
         cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
         CHECK_CUDA_ERROR("cudaMalloc failed");
 
-        CUDA_LAUNCH(construct_device_array<T>, (size_ + 1023) / 1024, 1024)(d_ptr_, size_);
+        CUDA_LAUNCH(construct_device_array<T>, (size_ + 511) / 512, 512)(d_ptr_, size_);
         cudaDeviceSynchronize();
         CHECK_CUDA_ERROR("construct device array failed");
     }
@@ -178,7 +178,7 @@ public:
         if (empty())
             return;
         std::fill(h_ptr_, h_ptr_ + size_, val);
-        CUDA_LAUNCH(constant_val_set_kernel<T>, (size_ + 1023) / 1024, 1024)(d_ptr_, size_, val);
+        CUDA_LAUNCH(constant_val_set_kernel<T>, (size_ + 511) / 512, 512)(d_ptr_, size_, val);
         CHECK_CUDA_ERROR("constant_val_set kernel failed");
     }
 

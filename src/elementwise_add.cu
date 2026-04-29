@@ -17,7 +17,7 @@ namespace elementwise_add
 
     void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block) 
     {
-        threads_per_block = 1024;
+        threads_per_block = 512;
         if (0 == version)
             num_threads = size;
         else if (1 == version)
