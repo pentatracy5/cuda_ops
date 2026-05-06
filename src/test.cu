@@ -152,11 +152,27 @@ namespace reduce_sum
 			int shared_mem_bytes;
 			reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
-			for (size_t i = 0; i < NREPEATS; i++)
+			int temp_size = NUM_GRIDS(num_threads, threads_per_block);
+			CudaMirrorBuffer<float> temp_storage(temp_size);
+
+			if (8 == version)
 			{
-				output.memset(0);
-				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				for (size_t i = 0; i < NREPEATS; i++)
+				{
+					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
+					CHECK_CUDA_ERROR("run kernel failed");
+					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
+					CHECK_CUDA_ERROR("run kernel failed");
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < NREPEATS; i++)
+				{
+					output.memset(0);
+					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
+					CHECK_CUDA_ERROR("run kernel failed");
+				}
 			}
 		}
 	}
@@ -175,11 +191,27 @@ namespace reduce_sum
 		int shared_mem_bytes;
 		reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
-		for (size_t i = 0; i < WARMUP; i++)
+		int temp_size = NUM_GRIDS(num_threads, threads_per_block);
+		CudaMirrorBuffer<float> temp_storage(temp_size);
+
+		if (8 == version)
 		{
-			output.memset(0);
-			CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			for (size_t i = 0; i < WARMUP; i++)
+			{
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
+				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < WARMUP; i++)
+			{
+				output.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
 		}
 
 		float milliseconds = 0;
@@ -188,11 +220,24 @@ namespace reduce_sum
 		cudaEventCreate(&stop);
 		cudaEventRecord(start);
 
-		for (size_t i = 0; i < NREPEATS; i++)
+		if (8 == version)
 		{
-			output.memset(0);
-			CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
+				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				output.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
 		}
 
 		cudaEventRecord(stop);

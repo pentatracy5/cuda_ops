@@ -45,7 +45,9 @@ namespace reduce_sum
 
 	__global__ void v7(float* input, float* output, const int size);
 
+	__global__ void v8(float* input, float* output, const int size);
+
 	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v0, v1, v2, v3, v4, v5, v6, v7 };
+	static const Kernel kernels[]{ v0, v1, v2, v3, v4, v5, v6, v7, v8 };
 }

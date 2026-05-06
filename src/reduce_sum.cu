@@ -44,7 +44,7 @@ namespace reduce_sum
             num_threads = size / 4;
             shared_mem_bytes = threads_per_block / 32 * sizeof(float);
         }
-        else if (7 == version)
+        else if (7 <= version && 9 > version)
         {
             num_threads = size / 128;
             shared_mem_bytes = threads_per_block / 32 * sizeof(float);
@@ -479,5 +479,49 @@ namespace reduce_sum
 
         if (0 == tid)
             atomicAdd(output, x);
+    }
+
+    /**
+     * @brief 基于 grid-stride loop 和 warp shuffle 的并行求和内核（消除全局原子操作）
+     *
+     * @note 相比 v7 的改进：
+     *       - 每个 block 不再通过 atomicAdd 将部分和累加到全局输出，而是直接将部分和
+     *         写入 output[blockIdx.x]，完全消除了多 block 竞争全局内存地址带来的原子操作
+     *         开销和串行化问题，在多 block 场景下具备更好的并行可扩展性。
+     *
+     * @note 存在的开销与缺陷：
+     *       - 输出变为按 block 独立存放的一组部分和（共 gridDim.x 个元素），调用者必须
+     *         在 kernel 执行完成后通过额外步骤（如在 CPU 端循环累加，或启动另一个归约 kernel）
+     *         合并所有部分和才能获得最终结果，增加了整体算法复杂度。
+     *       - output 数组需要至少 gridDim.x 个 float 元素的空间，且求和结果的精度取决于
+     *         后续合并的方式，若直接简单累加仍可能出现“大数吞小数”现象。
+     */
+    __global__ void v8(float* input, float* output, const int size)
+    {
+        extern __shared__ float smem[];
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        idx *= 4;
+        int tid = threadIdx.x;
+        float x = 0.f;
+        int stride = gridDim.x * blockDim.x * 4;
+        while (idx < size - 3)
+        {
+            float4 reg = FETCH_FLOAT4(input[idx]);
+            x += reg.x + reg.y + reg.z + reg.w;
+            idx += stride;
+        }
+
+        constexpr int warp_size = 32;
+        x = shuffle_warp_reduce<warp_size>(x);
+        if (0 == (tid & (warp_size - 1)))
+            smem[tid >> 5] = x;
+        __syncthreads();
+
+        constexpr int mini_warp_size = 16;
+        if (tid < mini_warp_size)
+            x = shuffle_warp_reduce<mini_warp_size>(smem[tid]);
+
+        if (0 == tid)
+            output[blockIdx.x] = x;
     }
 }

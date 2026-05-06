@@ -4,9 +4,10 @@
 #include <stdexcept>
 #include <string>
 
+#define NUM_GRIDS(n_threads, threads_per_block)                                                         ((n_threads + threads_per_block - 1) / threads_per_block)
+
 #ifndef __INTELLISENSE__
 
-#define NUM_GRIDS(n_threads, threads_per_block)                                                         ((n_threads + threads_per_block - 1) / threads_per_block)
 #define CUDA_LAUNCH(kernel, n_threads, threads_per_block)										        kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block>>>
 #define CUDA_LAUNCH_SHAREDMEM(kernel, n_threads, threads_per_block, shared_mem_bytes)				    kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes>>>
 #define CUDA_LAUNCH_SHAREDMEM_STREAM(kernel, n_threads, threads_per_block, shared_mem_bytes, stream)	kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes, stream>>>
