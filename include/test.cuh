@@ -11,3 +11,9 @@ namespace reduce_sum
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace histogram
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

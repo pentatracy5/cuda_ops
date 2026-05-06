@@ -18,6 +18,7 @@
 #define CUDA_LAUNCH_SHAREDMEM(kernel, n_threads, threads_per_block, shared_mem_bytes)			    	kernel
 #define CUDA_LAUNCH_SHAREDMEM_STREAM(kernel, n_threads, threads_per_block, shared_mem_bytes, stream)	kernel
 float atomicAdd(float* address, float val);
+int atomicAdd(int* address, int val);
 void __syncthreads();
 void __syncwarp(unsigned mask = 0xffffffff);
 template <typename T>

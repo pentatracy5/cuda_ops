@@ -28,3 +28,14 @@ void compare_array(float* output, float* ref, const int size, const float tolera
 		}
 	return;
 }
+
+void compare_array(int* output, int* ref, const int size)
+{
+	for (int i = 0; i < size; i++)
+		if (output[i] != ref[i])
+		{
+			cout << "Error: output(" << i << ") = " << output[i] << ", but expected " << ref[i] << endl;
+			return;
+		}
+	return;
+}

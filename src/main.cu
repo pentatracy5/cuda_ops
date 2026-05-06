@@ -14,6 +14,8 @@ void run(unsigned int type, unsigned int version)
 		elementwise_add::run(version);
 	else if (1 == type)
 		reduce_sum::run(version);
+	else if (2 == type)
+		histogram::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -22,6 +24,8 @@ void test(unsigned int type, unsigned int version)
 		elementwise_add::test(version);
 	else if (1 == type)
 		reduce_sum::test(version);
+	else if (2 == type)
+		histogram::test(version);
 }
 
 int main(int argc, char* argv[])

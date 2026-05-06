@@ -6,3 +6,4 @@ constexpr int N = 4 * 1024 * 1024 * 32;
 constexpr int WARMUP = 2;
 constexpr int NREPEATS = 128;
 constexpr float TOLERANCE = 1e-6 * N;
+constexpr int BINSIZE = 1024;
