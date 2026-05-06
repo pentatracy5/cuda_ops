@@ -21,6 +21,9 @@
     <CudaCompile Include="src\reduce_sum.cu">
       <Filter>src</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\test.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\kernel.cuh">
@@ -36,6 +39,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\utils.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\test.cuh">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

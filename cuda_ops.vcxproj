@@ -13,6 +13,7 @@
   <ItemGroup>
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />
+    <CudaCompile Include="src\test.cu" />
     <CudaCompile Include="src\utils.cu" />
   </ItemGroup>
   <ItemGroup>
@@ -25,6 +26,7 @@
     <ClInclude Include="include\CudaMirrorBuffer.cuh" />
     <ClInclude Include="include\define.cuh" />
     <ClInclude Include="include\kernel.cuh" />
+    <ClInclude Include="include\test.cuh" />
     <ClInclude Include="include\utils.cuh" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
