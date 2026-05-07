@@ -62,7 +62,9 @@ namespace histogram
 
 	__global__ void v0(float* data, int* bin, const int size, const int bin_size, const float lower_level, const float upper_level);
 
+	__global__ void v1(float* data, int* bin, const int size, const int bin_size, const float lower_level, const float upper_level);
+
 	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v0 };
+	static const Kernel kernels[]{ v0, v1 };
 }
