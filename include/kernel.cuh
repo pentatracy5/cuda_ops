@@ -51,3 +51,18 @@ namespace reduce_sum
 
 	static const Kernel kernels[]{ v0, v1, v2, v3, v4, v5, v6, v7, v8 };
 }
+
+namespace histogram
+{
+	int get_FLOPs(const int size);
+
+	int get_bytes_transferred(const int size, const int bin_size);
+
+	void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+
+	__global__ void v0(float* data, int* bin, const int size, const int bin_size, const float lower_level, const float upper_level);
+
+	using Kernel = decltype(&v0);
+
+	static const Kernel kernels[]{ v0 };
+}

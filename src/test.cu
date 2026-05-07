@@ -85,6 +85,8 @@ namespace elementwise_add
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 
 		c.to_host();
 		float time = milliseconds / NREPEATS;
@@ -260,8 +262,6 @@ namespace reduce_sum
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
-		cudaEventCreate(&start);
-		cudaEventCreate(&stop);
 		cudaEventRecord(start);
 
 		for (size_t i = 0; i < NREPEATS; i++)
@@ -273,6 +273,8 @@ namespace reduce_sum
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 
 		cudaFree(d_temp_storage);
 		CHECK_CUDA_ERROR("cudaFree failed");
@@ -284,6 +286,136 @@ namespace reduce_sum
 		cout << "reduce sum\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
 		cout << "Achieved GFLOPS:\t" << reduce_sum::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << reduce_sum::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
+		cout << endl;
+	}
+}
+
+namespace histogram
+{
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> data(N);
+		CudaMirrorBuffer<int> bin(BINSIZE);
+
+		float lower_level = 0.0;
+		float upper_level = 1.0; 
+		random_init_array(data.host(), N);
+		data.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			void* d_temp_storage = nullptr;
+			size_t temp_storage_bytes = 0;
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, lower_level, upper_level, N);
+			CHECK_CUDA_ERROR("run kernel failed");
+			cudaMalloc(&d_temp_storage, temp_storage_bytes);
+			CHECK_CUDA_ERROR("cudaMalloc failed");
+
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, lower_level, upper_level, N);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+
+			cudaFree(d_temp_storage);
+			CHECK_CUDA_ERROR("cudaFree failed");
+		}
+		else
+		{
+			int num_threads;
+			int threads_per_block;
+			int shared_mem_bytes;
+			histogram::get_kernel_launch_params(N, BINSIZE, version, num_threads, threads_per_block, shared_mem_bytes);
+
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				bin.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> data(N);
+		CudaMirrorBuffer<int> bin(BINSIZE);
+		CudaMirrorBuffer<int> ref(BINSIZE);
+
+		float lower_level = 0.0;
+		float upper_level = 1.0;
+		random_init_array(data.host(), N);
+		data.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		int shared_mem_bytes;
+		histogram::get_kernel_launch_params(N, BINSIZE, version, num_threads, threads_per_block, shared_mem_bytes);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			bin.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			bin.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+
+		bin.to_host();
+		float time = milliseconds / NREPEATS;
+
+		void* d_temp_storage = nullptr;
+		size_t temp_storage_bytes = 0;
+		cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+		CHECK_CUDA_ERROR("run kernel failed");
+		cudaMalloc(&d_temp_storage, temp_storage_bytes);
+		CHECK_CUDA_ERROR("cudaMalloc failed");
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		cudaFree(d_temp_storage);
+		CHECK_CUDA_ERROR("cudaFree failed");
+		ref.to_host();
+		float time_ref = milliseconds / NREPEATS;
+
+		compare_array(bin.host(), ref.host(), BINSIZE);
+
+		cout << "histogram\t\tversion " << version << "\tREF" << endl;
+		cout << "Memory Bandwidth:\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time << " GB/s\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << histogram::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << histogram::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
 		cout << endl;
 	}
 }

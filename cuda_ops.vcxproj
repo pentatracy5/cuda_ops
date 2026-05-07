@@ -86,7 +86,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
-      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -111,7 +111,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
-      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
