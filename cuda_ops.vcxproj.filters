@@ -27,6 +27,9 @@
     <CudaCompile Include="src\histogram.cu">
       <Filter>src</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\copy_if.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\kernel.cuh">

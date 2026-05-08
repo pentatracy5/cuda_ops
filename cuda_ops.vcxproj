@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="src\copy_if.cu" />
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\histogram.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />

@@ -17,3 +17,9 @@ namespace histogram
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace copy_if
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

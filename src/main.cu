@@ -16,6 +16,8 @@ void run(unsigned int type, unsigned int version)
 		reduce_sum::run(version);
 	else if (2 == type)
 		histogram::run(version);
+	else if (3 == type)
+		copy_if::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -26,6 +28,8 @@ void test(unsigned int type, unsigned int version)
 		reduce_sum::test(version);
 	else if (2 == type)
 		histogram::test(version);
+	else if (3 == type)
+		copy_if::test(version);
 }
 
 int main(int argc, char* argv[])

@@ -1,5 +1,6 @@
 #include <test.cuh>
 #include <iostream>
+#include <algorithm>
 #include <chrono>
 #include <CudaMirrorBuffer.cuh>
 #include <kernel.cuh>
@@ -10,6 +11,7 @@
 
 using std::cout;
 using std::endl;
+using std::sort;
 
 namespace elementwise_add
 {
@@ -416,6 +418,149 @@ namespace histogram
 		cout << "histogram\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time << " GB/s\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time_ref << " GB/s" << endl;
 		cout << "Achieved GFLOPS:\t" << histogram::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << histogram::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
+		cout << endl;
+	}
+}
+
+namespace copy_if
+{
+	struct LessThan
+	{
+		float compare;
+		__host__ __device__ __forceinline__ LessThan(float compare) : compare(compare) {}
+		__host__ __device__ __forceinline__ bool operator()(const float& a) const { return (a < compare); }
+	};
+
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> src(N);
+		CudaMirrorBuffer<float> dst(N);
+		CudaMirrorBuffer<int> dst_size(1);
+
+		random_init_array(src.host(), N);
+		src.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			LessThan select_op(COMPARE);
+			void* d_temp_storage = nullptr;
+			size_t temp_storage_bytes = 0;
+			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op);
+			CHECK_CUDA_ERROR("run kernel failed");
+			cudaMalloc(&d_temp_storage, temp_storage_bytes);
+			CHECK_CUDA_ERROR("cudaMalloc failed");
+
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+
+			cudaFree(d_temp_storage);
+			CHECK_CUDA_ERROR("cudaFree failed");
+		}
+		else
+		{
+			int num_threads;
+			int threads_per_block;
+			int shared_mem_bytes;
+			copy_if::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
+
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				dst_size.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> src(N);
+		CudaMirrorBuffer<float> dst(N);
+		CudaMirrorBuffer<int> dst_size(1);
+		CudaMirrorBuffer<float> ref(N);
+		CudaMirrorBuffer<int> ref_size(1);
+
+		random_init_array(src.host(), N);
+		src.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		int shared_mem_bytes;
+		copy_if::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			dst_size.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			dst_size.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+
+		dst.to_host();
+		dst_size.to_host();
+		float time = milliseconds / NREPEATS;
+
+		LessThan select_op(COMPARE);
+		void* d_temp_storage = nullptr;
+		size_t temp_storage_bytes = 0;
+		cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
+		CHECK_CUDA_ERROR("run kernel failed");
+		cudaMalloc(&d_temp_storage, temp_storage_bytes);
+		CHECK_CUDA_ERROR("cudaMalloc failed");
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		cudaFree(d_temp_storage);
+		CHECK_CUDA_ERROR("cudaFree failed");
+		ref.to_host();
+		ref_size.to_host();
+		float time_ref = milliseconds / NREPEATS;
+
+		compare_array(dst_size.host(), ref_size.host(), 1);
+		sort(dst.host(), dst.host() + dst_size.host()[0]);
+		sort(ref.host(), ref.host() + ref_size.host()[0]);
+		compare_array(dst.host(), ref.host(), dst_size.host()[0], 0.f);
+
+		cout << "copy if\t\t\tversion " << version << "\tREF" << endl;
+		cout << "Memory Bandwidth:\t" << copy_if::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << copy_if::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << copy_if::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << copy_if::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
 		cout << endl;
 	}
 }

@@ -7,7 +7,7 @@ namespace histogram
 {
     int get_FLOPs(const int size)
     {
-        return size;
+        return 2 * size;
     }
 
     int get_bytes_transferred(const int size, const int bin_size)

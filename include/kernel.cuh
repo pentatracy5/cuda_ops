@@ -68,3 +68,24 @@ namespace histogram
 
 	static const Kernel kernels[]{ v0, v1 };
 }
+
+namespace copy_if
+{
+	int get_FLOPs(const int size);
+
+	int get_bytes_transferred(const int size);
+
+	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+
+	__global__ void v0(float* src, float* dst, int* dst_size, const int size, const float compare);
+
+	__global__ void v1(float* src, float* dst, int* dst_size, const int size, const float compare);
+
+	__global__ void v2(float* src, float* dst, int* dst_size, const int size, const float compare);
+
+	__global__ void v3(float* src, float* dst, int* dst_size, const int size, const float compare);
+
+	using Kernel = decltype(&v0);
+
+	static const Kernel kernels[]{ v0, v1, v2, v3 };
+}

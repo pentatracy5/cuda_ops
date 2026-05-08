@@ -23,6 +23,11 @@ void __syncthreads();
 void __syncwarp(unsigned mask = 0xffffffff);
 template <typename T>
 T __shfl_down_sync(unsigned mask, T var, unsigned int delta, int width = 32);
+unsigned __activemask();
+int __ffs(int x);
+int __popc(unsigned int x);
+template <typename T>
+T __shfl_sync(unsigned mask, T var, int srcLane, int width = 32);
 
 #endif
 
