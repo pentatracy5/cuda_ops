@@ -89,3 +89,18 @@ namespace copy_if
 
 	static const Kernel kernels[]{ v0, v1, v2, v3 };
 }
+
+namespace elementwise_gelu
+{
+	int get_FLOPs(const int size);
+
+	int get_bytes_transferred(const int size);
+
+	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
+
+	__global__ void v0(float* input, float* output, const int size);
+
+	using Kernel = decltype(&v0);
+
+	static const Kernel kernels[]{ v0 };
+}

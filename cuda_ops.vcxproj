@@ -13,6 +13,7 @@
   <ItemGroup>
     <CudaCompile Include="src\copy_if.cu" />
     <CudaCompile Include="src\elementwise_add.cu" />
+    <CudaCompile Include="src\elementwise_gelu.cu" />
     <CudaCompile Include="src\histogram.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />
     <CudaCompile Include="src\test.cu" />
@@ -88,6 +89,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
+      <FastMath>true</FastMath>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -113,6 +115,7 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
+      <FastMath>true</FastMath>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -18,6 +18,8 @@ void run(unsigned int type, unsigned int version)
 		histogram::run(version);
 	else if (3 == type)
 		copy_if::run(version);
+	else if (4 == type)
+		elementwise_gelu::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -30,6 +32,8 @@ void test(unsigned int type, unsigned int version)
 		histogram::test(version);
 	else if (3 == type)
 		copy_if::test(version);
+	else if (4 == type)
+		elementwise_gelu::test(version);
 }
 
 int main(int argc, char* argv[])

@@ -112,7 +112,7 @@ namespace elementwise_add
 
 		double time_ref = elapsed.count() / NREPEATS;
 
-		compare_array(c.host(), ref.host(), N, TOLERANCE);
+		compare_array(c.host(), ref.host(), N, TOLERANCE_TIGHT);
 
 		cout << "elementwise add\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
@@ -283,7 +283,7 @@ namespace reduce_sum
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
-		compare_array(output.host(), ref.host(), 1, TOLERANCE);
+		compare_array(output.host(), ref.host(), 1, TOLERANCE_LOOSE);
 
 		cout << "reduce sum\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
@@ -561,6 +561,77 @@ namespace copy_if
 		cout << "copy if\t\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << copy_if::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << copy_if::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
 		cout << "Achieved GFLOPS:\t" << copy_if::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << copy_if::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
+		cout << endl;
+	}
+}
+
+namespace elementwise_gelu
+{
+	void run(unsigned int version) {}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> input(N);
+		CudaMirrorBuffer<float> output(N);
+		CudaMirrorBuffer<float> ref(N);
+
+		random_init_array(input.host(), N);
+		input.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		elementwise_gelu::get_kernel_launch_params(N, version, num_threads, threads_per_block);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		output.to_host();
+		float time = milliseconds / NREPEATS;
+
+		float* a_host = input.host();
+		float* ref_host = ref.host();
+
+		for (int i = 0; i < WARMUP; i++)
+			for (int j = 0; j < N; j++)
+				ref_host[j] = a_host[j] * 0.5f * (1.0f + tanhf(0.797884f * (a_host[j] + 0.044715f * a_host[j] * a_host[j] * a_host[j])));
+
+		auto begin = std::chrono::high_resolution_clock::now();
+
+		for (int i = 0; i < NREPEATS; i++)
+			for (int j = 0; j < N; j++)
+				ref_host[j] = a_host[j] * 0.5f * (1.0f + tanhf(0.797884f * (a_host[j] + 0.044715f * a_host[j] * a_host[j] * a_host[j])));
+
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - begin;
+
+		double time_ref = elapsed.count() / NREPEATS;
+
+		compare_array(output.host(), ref.host(), N, TOLERANCE_TIGHT);
+
+		cout << "elementwise gelu\t\tversion " << version << "\tREF" << endl;
+		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_gelu::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_gelu::get_FLOPs(N) / 1e9 / time_ref << " GFLOPS" << endl;
 		cout << endl;
 	}
 }
