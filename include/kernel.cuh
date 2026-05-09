@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <cuda_fp16.h>
 
 namespace elementwise_add 
 {
@@ -98,7 +99,13 @@ namespace elementwise_gelu
 
 	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
 
-	__global__ void v0(float* input, float* output, const int size);
+	__host__ __device__ __forceinline__ __half approximate_gelu(__half x)
+	{
+		float x_f = float(x);
+		return __half(x_f * 0.5f * (1.0f + tanhf(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
+	}
+
+	__global__ void v0(__half* input, __half* output, const int size);
 
 	using Kernel = decltype(&v0);
 

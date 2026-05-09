@@ -112,7 +112,7 @@ namespace elementwise_add
 
 		double time_ref = elapsed.count() / NREPEATS;
 
-		compare_array(c.host(), ref.host(), N, TOLERANCE_TIGHT);
+		compare_array(c.host(), ref.host(), N, TOLERANCETIGHT);
 
 		cout << "elementwise add\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
@@ -283,7 +283,7 @@ namespace reduce_sum
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
-		compare_array(output.host(), ref.host(), 1, TOLERANCE_LOOSE);
+		compare_array(output.host(), ref.host(), 1, TOLERANCELOOSE);
 
 		cout << "reduce sum\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
@@ -299,8 +299,6 @@ namespace histogram
 		CudaMirrorBuffer<float> data(N);
 		CudaMirrorBuffer<int> bin(BINSIZE);
 
-		float lower_level = 0.0;
-		float upper_level = 1.0; 
 		random_init_array(data.host(), N);
 		data.to_device();
 
@@ -308,14 +306,14 @@ namespace histogram
 		{
 			void* d_temp_storage = nullptr;
 			size_t temp_storage_bytes = 0;
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, lower_level, upper_level, N);
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
 			CHECK_CUDA_ERROR("run kernel failed");
 			cudaMalloc(&d_temp_storage, temp_storage_bytes);
 			CHECK_CUDA_ERROR("cudaMalloc failed");
 
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
-				cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, lower_level, upper_level, N);
+				cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
 				CHECK_CUDA_ERROR("run kernel failed");
 			}
 
@@ -332,7 +330,7 @@ namespace histogram
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
 				bin.memset(0);
-				CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+				CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
 				CHECK_CUDA_ERROR("run kernel failed");
 			}
 		}
@@ -344,8 +342,6 @@ namespace histogram
 		CudaMirrorBuffer<int> bin(BINSIZE);
 		CudaMirrorBuffer<int> ref(BINSIZE);
 
-		float lower_level = 0.0;
-		float upper_level = 1.0;
 		random_init_array(data.host(), N);
 		data.to_device();
 
@@ -357,7 +353,7 @@ namespace histogram
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			bin.memset(0);
-			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -370,7 +366,7 @@ namespace histogram
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			bin.memset(0);
-			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, lower_level, upper_level);
+			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -383,14 +379,14 @@ namespace histogram
 
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
-		cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+		cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
 		CHECK_CUDA_ERROR("run kernel failed");
 		cudaMalloc(&d_temp_storage, temp_storage_bytes);
 		CHECK_CUDA_ERROR("cudaMalloc failed");
 
 		for (size_t i = 0; i < WARMUP; i++)
 		{
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -398,7 +394,7 @@ namespace histogram
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, lower_level, upper_level, N);
+			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -413,7 +409,7 @@ namespace histogram
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
-		compare_array(bin.host(), ref.host(), BINSIZE);
+		compare_array(bin.host(), ref.host(), BINSIZE, 0);
 
 		cout << "histogram\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time << " GB/s\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time_ref << " GB/s" << endl;
@@ -553,7 +549,7 @@ namespace copy_if
 		ref_size.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
-		compare_array(dst_size.host(), ref_size.host(), 1);
+		compare_array(dst_size.host(), ref_size.host(), 1, 0);
 		sort(dst.host(), dst.host() + dst_size.host()[0]);
 		sort(ref.host(), ref.host() + ref_size.host()[0]);
 		compare_array(dst.host(), ref.host(), dst_size.host()[0], 0.f);
@@ -571,9 +567,9 @@ namespace elementwise_gelu
 
 	void test(unsigned int version)
 	{
-		CudaMirrorBuffer<float> input(N);
-		CudaMirrorBuffer<float> output(N);
-		CudaMirrorBuffer<float> ref(N);
+		CudaMirrorBuffer<__half> input(N);
+		CudaMirrorBuffer<__half> output(N);
+		CudaMirrorBuffer<__half> ref(N);
 
 		random_init_array(input.host(), N);
 		input.to_device();
@@ -609,29 +605,29 @@ namespace elementwise_gelu
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
-		float* a_host = input.host();
-		float* ref_host = ref.host();
+		__half* input_host = input.host();
+		__half* ref_host = ref.host();
 
 		for (int i = 0; i < WARMUP; i++)
 			for (int j = 0; j < N; j++)
-				ref_host[j] = a_host[j] * 0.5f * (1.0f + tanhf(0.797884f * (a_host[j] + 0.044715f * a_host[j] * a_host[j] * a_host[j])));
+				ref_host[j] = elementwise_gelu::approximate_gelu(input_host[j]);
 
 		auto begin = std::chrono::high_resolution_clock::now();
 
 		for (int i = 0; i < NREPEATS; i++)
 			for (int j = 0; j < N; j++)
-				ref_host[j] = a_host[j] * 0.5f * (1.0f + tanhf(0.797884f * (a_host[j] + 0.044715f * a_host[j] * a_host[j] * a_host[j])));
+				ref_host[j] = elementwise_gelu::approximate_gelu(input_host[j]);
 
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - begin;
 
 		double time_ref = elapsed.count() / NREPEATS;
 
-		compare_array(output.host(), ref.host(), N, TOLERANCE_TIGHT);
+		compare_array(output.host(), ref.host(), N, TOLERANCETIGHT);
 
-		cout << "elementwise gelu\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_gelu::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_gelu::get_FLOPs(N) / 1e9 / time_ref << " GFLOPS" << endl;
+		cout << "elementwise gelu\tversion " << version << "\t\tREF" << endl;
+		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e9 / time_ref << " GFLOPS(FP16)" << endl;
 		cout << endl;
 	}
 }

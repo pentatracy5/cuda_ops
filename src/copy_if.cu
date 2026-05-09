@@ -18,7 +18,7 @@ namespace copy_if
     void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
     {
         threads_per_block = 512;
-        if (0 <= version && 2 > version)
+        if (2 > version)
         {
             num_threads = size / 32;
             shared_mem_bytes = 0;
@@ -84,6 +84,10 @@ namespace copy_if
      * @details 与 v0 类似，但用 atomic_aggregate_increment 代替 atomicAdd，
      *          以 warp 为单位减少全局原子冲突。每次处理 4 个元素，并插入 __syncwarp
      *          保证数据一致性。
+     * @note 由于 atomic_aggregate_increment 中调用了 __activemask()，为了保证拿到
+     *       准确的 active，必须在 if (reg.x/y/z/w < compare) 的判断之前执行
+     *       __syncwarp ，这样才能保证逻辑上命中 if (reg.x/y/z/w < compare) 分支的 thread
+     *       能在实际运行时同步进入该分支
      */
     __global__ void v1(float* src, float* dst, int* dst_size, const int size, const float compare)
     {
@@ -92,7 +96,7 @@ namespace copy_if
         int stride = gridDim.x * blockDim.x * 4;
         while (idx < size - 3)
         {
-            unsigned int mask = (unsigned int)((1ULL << ((size - ((idx >> 8) << 8)) >> 2)) - 1ULL);
+            unsigned int mask = (unsigned int)((1ULL << min(32, (size - (idx & ~127)) >> 2)) - 1ULL);
             float4 reg = FETCH_FLOAT4(src[idx]);
             __syncwarp(mask);
             if (reg.x < compare)
@@ -197,7 +201,7 @@ namespace copy_if
 
             if (idx < size - 3)
             {
-                unsigned int mask = (unsigned int)((1ULL << ((size - ((idx >> 8) << 8)) >> 2)) - 1ULL);
+                unsigned int mask = (unsigned int)((1ULL << min(32, (size - (idx & ~127)) >> 2)) - 1ULL);
                 reg = FETCH_FLOAT4(src[idx]);
                 __syncwarp(mask);
                 if (reg.x < compare)

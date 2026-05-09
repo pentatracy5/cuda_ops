@@ -17,7 +17,6 @@
     <CudaCompile Include="src\histogram.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />
     <CudaCompile Include="src\test.cu" />
-    <CudaCompile Include="src\utils.cu" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\main.cu">

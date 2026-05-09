@@ -233,7 +233,7 @@ namespace reduce_sum
      *
      * @see https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
      */
-    template <int warp_size>
+    template<int warp_size>
     __device__ __forceinline__ void warp_reduce(float* smem, int tid)
     {
         constexpr unsigned int mask = (1ULL << warp_size) - 1;
@@ -247,7 +247,7 @@ namespace reduce_sum
     }
 
     // 错误的写法，会被编译器优化，导致计算结果不对
-    //template <int warp_size>
+    //template<int warp_size>
     //__device__ __forceinline__ void warp_reduce(float* smem, int tid)
     //{
     //    if (32 <= warp_size)
@@ -265,7 +265,7 @@ namespace reduce_sum
     //}
 
     // 不推荐的写法，因为不同版本的编译器不能保证volatile关键字的行为一致
-    //template <int warp_size>
+    //template<int warp_size>
     //__device__ __forceinline__ void warp_reduce(volatile float* smem, int tid)
     //{
     //    if (32 <= warp_size)
@@ -387,7 +387,7 @@ namespace reduce_sum
      *       同一个 warp。内部通过 `__shfl_down_sync(mask, ...)` 进行线程间数据交换，
      *       该指令对 mask 中的线程具有隐式同步效果，因此无需额外的 `__syncwarp`。
      */
-    template <int warp_size>
+    template<int warp_size>
     __device__ __forceinline__ float shuffle_warp_reduce(float x)
     {
         constexpr unsigned int mask = (1ULL << warp_size) - 1;
