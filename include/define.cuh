@@ -3,6 +3,7 @@
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <string>
+#include <utils.cuh>
 
 #define NUM_GRIDS(n_threads, threads_per_block)                                                         ((n_threads + threads_per_block - 1) / threads_per_block)
 
@@ -43,3 +44,5 @@ inline void check_cuda_error_impl(const char* msg, const char* file, int line)
 
 #define FETCH_FLOAT2(var) (reinterpret_cast<float2*>(&(var))[0])
 #define FETCH_FLOAT4(var) (reinterpret_cast<float4*>(&(var))[0])
+#define FETCH_HALF2(var) (reinterpret_cast<__half2*>(&(var))[0])
+#define FETCH_HALF8(var) (reinterpret_cast<__half8*>(&(var))[0])

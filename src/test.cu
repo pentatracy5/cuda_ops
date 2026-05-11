@@ -599,35 +599,41 @@ namespace elementwise_gelu
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&milliseconds, start, stop);
-		cudaEventDestroy(start);
-		cudaEventDestroy(stop);
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
-		__half* input_host = input.host();
-		__half* ref_host = ref.host();
+		int ref_version = sizeof(elementwise_gelu::kernels) / sizeof(elementwise_gelu::kernels[0]) - 1;
+		elementwise_gelu::get_kernel_launch_params(N, ref_version, num_threads, threads_per_block);
 
-		for (int i = 0; i < WARMUP; i++)
-			for (int j = 0; j < N; j++)
-				ref_host[j] = elementwise_gelu::approximate_gelu(input_host[j]);
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		cudaEventRecord(start);
 
-		for (int i = 0; i < NREPEATS; i++)
-			for (int j = 0; j < N; j++)
-				ref_host[j] = elementwise_gelu::approximate_gelu(input_host[j]);
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 
-		double time_ref = elapsed.count() / NREPEATS;
+		ref.to_host();
+		float time_ref = milliseconds / NREPEATS;
 
 		compare_array(output.host(), ref.host(), N, TOLERANCETIGHT);
 
 		cout << "elementwise gelu\tversion " << version << "\t\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e9 / time_ref << " GFLOPS(FP16)" << endl;
+		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS(FP16)" << endl;
 		cout << endl;
 	}
 }

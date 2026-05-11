@@ -99,15 +99,15 @@ namespace elementwise_gelu
 
 	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
 
-	__host__ __device__ __forceinline__ __half approximate_gelu(__half x)
-	{
-		float x_f = float(x);
-		return __half(x_f * 0.5f * (1.0f + tanhf(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
-	}
-
 	__global__ void v0(__half* input, __half* output, const int size);
+
+	__global__ void v1(__half* input, __half* output, const int size);
+
+	__global__ void v2(__half* input, __half* output, const int size);
+
+	__global__ void v_ref(__half* input, __half* output, const int size);
 
 	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v0 };
+	static const Kernel kernels[]{ v0, v1, v2, v_ref };
 }
