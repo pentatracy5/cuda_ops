@@ -34,8 +34,8 @@ namespace elementwise_gelu
 
     __device__ __forceinline__ __half approximate_gelu_fast_tanh(__half x)
     {
-        float x_f = float(x);
-        return __half(x_f * 0.5f * (1.0f + fast_tanh(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
+        float x_f = __half2float(x);
+        return __float2half_rn(x_f * 0.5f * (1.0f + fast_tanh(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
     }
 
     __global__ void v0(__half* input, __half* output, const int size)
@@ -104,8 +104,8 @@ namespace elementwise_gelu
 
     __device__ __forceinline__ __half approximate_gelu(__half x)
     {
-        float x_f = float(x);
-        return __half(x_f * 0.5f * (1.0f + tanhf(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
+        float x_f = __half2float(x);
+        return __float2half_rn(x_f * 0.5f * (1.0f + tanhf(0.797884f * (x_f + 0.044715f * x_f * x_f * x_f))));
     }
 
     __global__ void v_ref(__half* input, __half* output, const int size)
