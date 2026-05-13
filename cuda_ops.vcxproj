@@ -16,6 +16,7 @@
     <CudaCompile Include="src\elementwise_gelu.cu" />
     <CudaCompile Include="src\histogram.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />
+    <CudaCompile Include="src\softmax.cu" />
     <CudaCompile Include="src\test.cu" />
   </ItemGroup>
   <ItemGroup>
