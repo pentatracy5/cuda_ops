@@ -563,7 +563,26 @@ namespace copy_if
 
 namespace elementwise_gelu
 {
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<__half> input(N);
+		CudaMirrorBuffer<__half> output(N);
+
+		random_init_array(input.host(), N);
+		input.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		if constexpr (PROFILEREF)
+			version = sizeof(elementwise_gelu::kernels) / sizeof(elementwise_gelu::kernels[0]) - 1;
+		elementwise_gelu::get_kernel_launch_params(N, version, num_threads, threads_per_block);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+	}
 
 	void test(unsigned int version)
 	{
