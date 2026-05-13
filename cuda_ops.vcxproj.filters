@@ -15,9 +15,6 @@
     <CudaCompile Include="src\main.cu">
       <Filter>src</Filter>
     </CudaCompile>
-    <CudaCompile Include="src\utils.cu">
-      <Filter>src</Filter>
-    </CudaCompile>
     <CudaCompile Include="src\reduce_sum.cu">
       <Filter>src</Filter>
     </CudaCompile>
@@ -31,6 +28,16 @@
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\elementwise_gelu.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\softmax.cu" />
+    <CudaCompile Include="src\quantize.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\gemv.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\dropout.cu">
       <Filter>src</Filter>
     </CudaCompile>
   </ItemGroup>

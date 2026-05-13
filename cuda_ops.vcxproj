@@ -12,9 +12,12 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\copy_if.cu" />
+    <CudaCompile Include="src\dropout.cu" />
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\elementwise_gelu.cu" />
+    <CudaCompile Include="src\gemv.cu" />
     <CudaCompile Include="src\histogram.cu" />
+    <CudaCompile Include="src\quantize.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />
     <CudaCompile Include="src\softmax.cu" />
     <CudaCompile Include="src\test.cu" />
