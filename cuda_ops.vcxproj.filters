@@ -30,7 +30,6 @@
     <CudaCompile Include="src\elementwise_gelu.cu">
       <Filter>src</Filter>
     </CudaCompile>
-    <CudaCompile Include="src\softmax.cu" />
     <CudaCompile Include="src\quantize.cu">
       <Filter>src</Filter>
     </CudaCompile>
@@ -38,6 +37,9 @@
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\dropout.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
+    <CudaCompile Include="src\softmax.cu">
       <Filter>src</Filter>
     </CudaCompile>
   </ItemGroup>
