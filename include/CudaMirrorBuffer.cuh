@@ -34,10 +34,13 @@ public:
         if (size_ == 0) 
             return;
 
-        h_ptr_ = new T[size_];
-
-        cudaHostAlloc((void**)&d_ptr_, size_ * sizeof(T), cudaHostAllocDefault);
+        cudaHostAlloc((void**)&h_ptr_, size_ * sizeof(T), cudaHostAllocDefault);
         CHECK_CUDA_ERROR("cudaHostAlloc failed");
+        for (size_t i = 0; i < size; i++)
+            new(h_ptr_ + i) T();
+
+        cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
+        CHECK_CUDA_ERROR("cudaMalloc failed");
 
         CUDA_LAUNCH(construct_device_array<T>, (size_ + 511) / 512, 512)(d_ptr_, size_);
         cudaDeviceSynchronize();
@@ -185,8 +188,13 @@ public:
 private:
     void release() 
     {
-        delete [] h_ptr_;
-        h_ptr_ = nullptr;
+        if (h_ptr_)
+        {
+            for (size_t i = 0; i < size_; ++i)
+                h_ptr_[i].~T();
+            cudaFreeHost(h_ptr_);
+            h_ptr_ = nullptr;
+        }
         if (d_ptr_) 
         {
             cudaFree(d_ptr_);
