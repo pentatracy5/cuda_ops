@@ -36,8 +36,8 @@ public:
 
         h_ptr_ = new T[size_];
 
-        cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
-        CHECK_CUDA_ERROR("cudaMalloc failed");
+        cudaHostAlloc((void**)&d_ptr_, size_ * sizeof(T), cudaHostAllocDefault);
+        CHECK_CUDA_ERROR("cudaHostAlloc failed");
 
         CUDA_LAUNCH(construct_device_array<T>, (size_ + 511) / 512, 512)(d_ptr_, size_);
         cudaDeviceSynchronize();
