@@ -29,3 +29,9 @@ namespace elementwise_gelu
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace stream_schedule
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

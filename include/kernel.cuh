@@ -111,3 +111,14 @@ namespace elementwise_gelu
 
 	static const Kernel kernels[]{ v0, v1, v2, v_ref };
 }
+
+namespace stream_schedule
+{
+	void depth_first(cudaStream_t* streams, const int num_streams, float* h_a, float* h_b, float* h_c, float* d_a, float* d_b, float* d_c, const int size);
+
+	void breadth_first(cudaStream_t* streams, const int num_streams, float* h_a, float* h_b, float* h_c, float* d_a, float* d_b, float* d_c, const int size);
+
+	using Kernel = decltype(&depth_first);
+
+	static const Kernel kernels[]{ depth_first, breadth_first };
+}

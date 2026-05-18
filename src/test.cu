@@ -1,6 +1,7 @@
 #include <test.cuh>
 #include <iostream>
 #include <algorithm>
+#include <vector>
 #include <chrono>
 #include <CudaMirrorBuffer.cuh>
 #include <kernel.cuh>
@@ -12,6 +13,7 @@
 using std::cout;
 using std::endl;
 using std::sort;
+using std::vector;
 
 namespace elementwise_add
 {
@@ -654,5 +656,65 @@ namespace elementwise_gelu
 		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
 		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS(FP16)" << endl;
 		cout << endl;
+	}
+}
+
+namespace stream_schedule
+{
+	void run(unsigned int version) {}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> a(N);
+		CudaMirrorBuffer<float> b(N);
+		CudaMirrorBuffer<float> c(N);
+		CudaMirrorBuffer<float> ref(N);
+
+		random_init_array(a.host(), N);
+		random_init_array(b.host(), N);
+		float* a_host = a.host();
+		float* b_host = b.host();
+		float* ref_host = ref.host();
+		for (int j = 0; j < N; j++)
+			ref_host[j] = a_host[j] + b_host[j];
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+
+		const int max_num_streams = 16;
+		vector<cudaStream_t> streams(max_num_streams);
+		for (auto& stream : streams)
+			cudaStreamCreate(&stream);
+
+		for (size_t num_streams = 1; num_streams <= max_num_streams; num_streams++)
+		{
+			for (size_t i = 0; i < WARMUP; i++)
+				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
+
+			cudaEventRecord(start);
+
+			for (size_t i = 0; i < NREPEATS; i++)
+				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
+
+			cudaEventRecord(stop);
+			cudaEventSynchronize(stop);
+			cudaEventElapsedTime(&milliseconds, start, stop);
+
+			float time = milliseconds / NREPEATS;
+
+			compare_array(c.host(), ref.host(), N, TOLERANCETIGHT);
+
+			cout << "stream schedule\tversion " << version << "\t" << num_streams << " streams" << endl;
+			cout << "Time cost:\t\t\t" << time << " ms\t" << endl;
+			cout << endl;
+		}
+
+		for (auto& stream : streams)
+			cudaStreamDestroy(stream);
+
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 	}
 }

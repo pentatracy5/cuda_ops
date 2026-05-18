@@ -20,6 +20,8 @@ void run(unsigned int type, unsigned int version)
 		copy_if::run(version);
 	else if (4 == type)
 		elementwise_gelu::run(version);
+	else if (5 == type)
+		stream_schedule::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -34,6 +36,8 @@ void test(unsigned int type, unsigned int version)
 		copy_if::test(version);
 	else if (4 == type)
 		elementwise_gelu::test(version);
+	else if (5 == type)
+		stream_schedule::test(version);
 }
 
 int main(int argc, char* argv[])
