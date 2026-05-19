@@ -112,13 +112,13 @@ namespace elementwise_add
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - begin;
 
-		double time_ref = elapsed.count() / NREPEATS;
+		double time_ref = elapsed.count() / NREPEATS * 1e3;
 
 		compare_array(c.host(), ref.host(), N, 0);
 
 		cout << "elementwise add\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << elementwise_add::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_add::get_FLOPs(N) / 1e9 / time_ref << " GFLOPS" << endl;
+		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << elementwise_add::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_add::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
 		cout << endl;
 	}
 }
@@ -670,12 +670,11 @@ namespace stream_schedule
 		random_init_array(a.host(), N);
 		random_init_array(b.host(), N);
 
-		const int max_num_streams = 16;
-		vector<cudaStream_t> streams(max_num_streams);
+		vector<cudaStream_t> streams(MAXNUMSTREAMS);
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
-		for (size_t num_streams = 1; num_streams <= max_num_streams; num_streams++)
+		for (size_t num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
 			for (size_t i = 0; i < NREPEATS; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
@@ -703,12 +702,11 @@ namespace stream_schedule
 		cudaEventCreate(&start);
 		cudaEventCreate(&stop);
 
-		const int max_num_streams = 16;
-		vector<cudaStream_t> streams(max_num_streams);
+		vector<cudaStream_t> streams(MAXNUMSTREAMS);
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
-		for (size_t num_streams = 1; num_streams <= max_num_streams; num_streams++)
+		for (size_t num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
 		{
 			c.memset(0);
 
