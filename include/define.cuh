@@ -3,7 +3,7 @@
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <string>
-#include <utils.cuh>
+#include <types.cuh>
 
 #define NUM_GRIDS(n_threads, threads_per_block)                                                         ((n_threads + threads_per_block - 1) / threads_per_block)
 

@@ -34,6 +34,7 @@
     <ClInclude Include="include\define.cuh" />
     <ClInclude Include="include\kernel.cuh" />
     <ClInclude Include="include\test.cuh" />
+    <ClInclude Include="include\types.cuh" />
     <ClInclude Include="include\utils.cuh" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -3,7 +3,6 @@
 #include <random>
 #include <iostream>
 #include <config.cuh>
-#include <cuda_fp16.h>
 
 using std::mt19937;
 using std::random_device;
@@ -31,10 +30,3 @@ void compare_array(T* output, T* ref, const int size, const float tolerance)
 		}
 	return;
 }
-
-struct alignas(16) __half8
-{
-	__half val[8];
-	__host__ __device__ inline const __half& operator[](int i) const { return val[i]; }
-	__host__ __device__ inline __half& operator[](int i) { return val[i]; }
-};

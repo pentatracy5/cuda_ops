@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <chrono>
-#include <CudaMirrorBuffer.cuh>
+#include <types.cuh>
 #include <kernel.cuh>
 #include <define.cuh>
 #include <config.cuh>
@@ -661,7 +661,27 @@ namespace elementwise_gelu
 
 namespace stream_schedule
 {
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> a(N);
+		CudaMirrorBuffer<float> b(N);
+		CudaMirrorBuffer<float> c(N);
+
+		random_init_array(a.host(), N);
+		random_init_array(b.host(), N);
+
+		const int max_num_streams = 16;
+		vector<cudaStream_t> streams(max_num_streams);
+		for (auto& stream : streams)
+			cudaStreamCreate(&stream);
+
+		for (size_t num_streams = 1; num_streams <= max_num_streams; num_streams++)
+			for (size_t i = 0; i < NREPEATS; i++)
+				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
+
+		for (auto& stream : streams)
+			cudaStreamDestroy(stream);
+	}
 
 	void test(unsigned int version)
 	{
