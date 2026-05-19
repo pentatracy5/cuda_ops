@@ -114,7 +114,7 @@ namespace elementwise_add
 
 		double time_ref = elapsed.count() / NREPEATS;
 
-		compare_array(c.host(), ref.host(), N, TOLERANCETIGHT);
+		compare_array(c.host(), ref.host(), N, 0);
 
 		cout << "elementwise add\t\tversion " << version << "\tREF" << endl;
 		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e9 / time_ref << " GB/s" << endl;
@@ -710,6 +710,8 @@ namespace stream_schedule
 
 		for (size_t num_streams = 1; num_streams <= max_num_streams; num_streams++)
 		{
+			c.memset(0);
+
 			for (size_t i = 0; i < WARMUP; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
@@ -724,7 +726,7 @@ namespace stream_schedule
 
 			float time = milliseconds / NREPEATS;
 
-			compare_array(c.host(), ref.host(), N, TOLERANCETIGHT);
+			compare_array(c.host(), ref.host(), N, 0.f);
 
 			cout << "stream schedule\tversion " << version << "\t" << num_streams << " streams" << endl;
 			cout << "Time cost:\t\t\t" << time << " ms\t" << endl;

@@ -9,7 +9,7 @@ namespace stream_schedule
 {
     void depth_first(cudaStream_t* streams, const int num_streams, float* h_a, float* h_b, float* h_c, float* d_a, float* d_b, float* d_c, const int size)
     {
-        const int size_per_stream = size / num_streams;
+        const int size_per_stream = (size + num_streams - 1) / num_streams;
         const int shared_mem_bytes = 0;
         const int version = 0;
         for (int i = 0; i < num_streams; i++)
@@ -33,7 +33,7 @@ namespace stream_schedule
 
     void breadth_first(cudaStream_t* streams, const int num_streams, float* h_a, float* h_b, float* h_c, float* d_a, float* d_b, float* d_c, const int size)
     {
-        const int size_per_stream = size / num_streams;
+        const int size_per_stream = (size + num_streams - 1) / num_streams;
         const int shared_mem_bytes = 0;
         const int version = 0;
         for (int i = 0; i < num_streams; i++)
