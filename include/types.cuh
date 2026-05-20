@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_fp16.h>
+#include <cuda_runtime.h>
 #include <CudaMirrorBuffer.cuh>
 
 struct alignas(16) __half8
@@ -14,4 +15,16 @@ enum QuantizeType
 {
 	SYMMETRIC = 0,
 	ASYMMETRIC = 1
+};
+
+template <typename T>
+struct MaxOp
+{
+	__host__ __device__ T operator()(T a, T b) const { return max(a, b); }
+};
+
+template <typename T>
+struct MinOp
+{
+	__host__ __device__ T operator()(T a, T b) const { return min(a, b); }
 };

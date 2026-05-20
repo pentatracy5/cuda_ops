@@ -4,6 +4,7 @@
 #include <kernel.cuh>
 #include <define.cuh>
 #include <utils.cuh>
+#include <types.cuh>
 
 namespace quantize
 {
@@ -22,7 +23,7 @@ namespace quantize
         threads_per_block = 512;
         if (0 == version)
         {
-            num_threads = rows / 256 * threads_per_block;
+            num_threads = (rows + 255) / 256 * threads_per_block;
             shared_mem_bytes = (threads_per_block / 16 + 2) * sizeof(float); // threads_per_block / 16 个 fp32 用于 reduce max/min，两个 fp32 用于存储 scale 和 zeropoint
         }
         else
@@ -60,6 +61,9 @@ namespace quantize
     template <QuantizeType qtype>
     __global__ void v0(float* d_input, int8_t* d_output, const int rows, const int cols, const float qmin, const float qmax)
     {
+        MaxOp<float> max_op;
+        MinOp<float> min_op;
+
         extern __shared__ float smem[];
         float* smem_max = smem;
         float* smem_min = smem + blockDim.x / 32;
@@ -85,8 +89,8 @@ namespace quantize
             }
 
             constexpr int warp_size = 32;
-            row_max = shuffle_warp_reduce_max<warp_size>(row_max);
-            row_min = shuffle_warp_reduce_min<warp_size>(row_min);
+            row_max = shuffle_warp_reduce<warp_size, float, MaxOp>(row_max, max_op);
+            row_min = shuffle_warp_reduce<warp_size, float, MinOp>(row_min, min_op);
             if (0 == (tid & (warp_size - 1)))
             {
                 smem_max[tid >> 5] = row_max;
@@ -97,8 +101,8 @@ namespace quantize
             constexpr int mini_warp_size = 16;
             if (tid < mini_warp_size)
             {
-                row_max = shuffle_warp_reduce_max<mini_warp_size>(smem_max[tid]);
-                row_min = shuffle_warp_reduce_min<mini_warp_size>(smem_min[tid]);
+                row_max = shuffle_warp_reduce<mini_warp_size, float, MaxOp>(smem_max[tid], max_op);
+                row_min = shuffle_warp_reduce<mini_warp_size, float, MinOp>(smem_min[tid], min_op);
             }
 
             if (0 == tid)
