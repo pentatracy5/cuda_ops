@@ -34,30 +34,6 @@ namespace quantize
         return;
     }
 
-    template<int warp_size>
-    __device__ __forceinline__ float shuffle_warp_reduce_max(float x)
-    {
-        constexpr unsigned int mask = (1ULL << warp_size) - 1;
-        if (32 <= warp_size)    x = max(x, __shfl_down_sync(mask, x, 16));
-        if (16 <= warp_size)    x = max(x, __shfl_down_sync(mask, x, 8));
-        if (8 <= warp_size)     x = max(x, __shfl_down_sync(mask, x, 4));
-        if (4 <= warp_size)     x = max(x, __shfl_down_sync(mask, x, 2));
-        if (2 <= warp_size)     x = max(x, __shfl_down_sync(mask, x, 1));
-        return x;
-    }
-
-    template<int warp_size>
-    __device__ __forceinline__ float shuffle_warp_reduce_min(float x)
-    {
-        constexpr unsigned int mask = (1ULL << warp_size) - 1;
-        if (32 <= warp_size)    x = min(x, __shfl_down_sync(mask, x, 16));
-        if (16 <= warp_size)    x = min(x, __shfl_down_sync(mask, x, 8));
-        if (8 <= warp_size)     x = min(x, __shfl_down_sync(mask, x, 4));
-        if (4 <= warp_size)     x = min(x, __shfl_down_sync(mask, x, 2));
-        if (2 <= warp_size)     x = min(x, __shfl_down_sync(mask, x, 1));
-        return x;
-    }
-
     template <QuantizeType qtype>
     __global__ void v0(float* d_input, int8_t* d_output, const int rows, const int cols, const float qmin, const float qmax)
     {

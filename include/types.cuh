@@ -28,3 +28,9 @@ struct MinOp
 {
 	__host__ __device__ T operator()(T a, T b) const { return min(a, b); }
 };
+
+template <typename T>
+struct AddOp
+{
+	__host__ __device__ T operator()(T a, T b) const { return a + b; }
+};
