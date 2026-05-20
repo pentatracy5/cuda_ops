@@ -388,7 +388,7 @@ namespace reduce_sum
      *       该指令对 mask 中的线程具有隐式同步效果，因此无需额外的 `__syncwarp`。
      */
     template<int warp_size>
-    __device__ __forceinline__ float shuffle_warp_reduce(float x)
+    __device__ __forceinline__ float shuffle_warp_reduce_sum(float x)
     {
         constexpr unsigned int mask = (1ULL << warp_size) - 1;
         if (32 <= warp_size)    x += __shfl_down_sync(mask, x, 16);
@@ -425,14 +425,14 @@ namespace reduce_sum
         }
 
         constexpr int warp_size = 32;
-        x = shuffle_warp_reduce<warp_size>(x);
+        x = shuffle_warp_reduce_sum<warp_size>(x);
         if (0 == (tid & (warp_size - 1)))
             smem[tid >> 5] = x;
         __syncthreads();
 
         constexpr int mini_warp_size = 16;
         if (tid < mini_warp_size)
-            x = shuffle_warp_reduce<mini_warp_size>(smem[tid]);
+            x = shuffle_warp_reduce_sum<mini_warp_size>(smem[tid]);
 
         if (0 == tid)
             atomicAdd(output, x);
@@ -468,14 +468,14 @@ namespace reduce_sum
         }
 
         constexpr int warp_size = 32;
-        x = shuffle_warp_reduce<warp_size>(x);
+        x = shuffle_warp_reduce_sum<warp_size>(x);
         if (0 == (tid & (warp_size - 1)))
             smem[tid >> 5] = x;
         __syncthreads();
 
         constexpr int mini_warp_size = 16;
         if (tid < mini_warp_size)
-            x = shuffle_warp_reduce<mini_warp_size>(smem[tid]);
+            x = shuffle_warp_reduce_sum<mini_warp_size>(smem[tid]);
 
         if (0 == tid)
             atomicAdd(output, x);
@@ -512,14 +512,14 @@ namespace reduce_sum
         }
 
         constexpr int warp_size = 32;
-        x = shuffle_warp_reduce<warp_size>(x);
+        x = shuffle_warp_reduce_sum<warp_size>(x);
         if (0 == (tid & (warp_size - 1)))
             smem[tid >> 5] = x;
         __syncthreads();
 
         constexpr int mini_warp_size = 16;
         if (tid < mini_warp_size)
-            x = shuffle_warp_reduce<mini_warp_size>(smem[tid]);
+            x = shuffle_warp_reduce_sum<mini_warp_size>(smem[tid]);
 
         if (0 == tid)
             output[blockIdx.x] = x;
