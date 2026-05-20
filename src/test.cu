@@ -745,29 +745,33 @@ namespace stream_schedule
 
 namespace quantize
 {
-	void quantize_cpu(float* h_input, int8_t* h_output, float* h_max, float* h_min, float* h_scale, float* h_zeropoint)
+	void quantize_cpu(float* h_input, int8_t* h_output)
 	{
+		float row_max;
+		float row_min;
+		float scale;
+		float zeropoint;
 		for (int j = 0; j < ROWS; j++)
 		{
-			h_max[j] = FLT_MIN;
-			h_min[j] = FLT_MAX;
+			row_max = FLT_MIN;
+			row_min = FLT_MAX;
 			for (int k = 0; k < COLS; k++)
 			{
-				h_max[j] = max(h_max[j], h_input[j * COLS + k]);
-				h_min[j] = min(h_min[j], h_input[j * COLS + k]);
+				row_max = max(row_max, h_input[j * COLS + k]);
+				row_min = min(row_min, h_input[j * COLS + k]);
 			}
 			if constexpr (QUANTIZETYPE == ASYMMETRIC)
 			{
-				h_scale[j] = (h_max[j] - h_min[j]) / (QMAX - QMIN);
-				h_zeropoint[j] = QMIN - nearbyint(h_min[j] / h_scale[j]);
+				scale = (row_max - row_min) / (QMAX - QMIN);
+				zeropoint = QMIN - nearbyint(row_min / scale);
 			}
 			else
 			{
-				h_scale[j] = max(fabs(h_max[j]), fabs(h_min[j])) / QMAX;
-				h_zeropoint[j] = 0.f;
+				scale = max(fabs(row_max), fabs(row_min)) / QMAX;
+				zeropoint = 0.f;
 			}
 			for (int k = 0; k < COLS; k++)
-				h_output[j * COLS + k] = clamp(nearbyint(h_input[j * COLS + k] / h_scale[j] + h_zeropoint[j]), QMIN, QMAX);
+				h_output[j * COLS + k] = clamp(nearbyint(h_input[j * COLS + k] / scale + zeropoint), QMIN, QMAX);
 		}
 	}
 
@@ -776,15 +780,7 @@ namespace quantize
 	void test(unsigned int version)
 	{
 		CudaMirrorBuffer<float> input(ROWS * COLS);
-		CudaMirrorBuffer<float> row_max(ROWS);
-		CudaMirrorBuffer<float> row_min(ROWS);
-		CudaMirrorBuffer<float> row_scale(ROWS);
-		CudaMirrorBuffer<float> row_zeropoint(ROWS);
 		CudaMirrorBuffer<int8_t> output(ROWS * COLS);
-		CudaMirrorBuffer<float> ref_max(ROWS);
-		CudaMirrorBuffer<float> ref_min(ROWS);
-		CudaMirrorBuffer<float> ref_scale(ROWS);
-		CudaMirrorBuffer<float> ref_zeropoint(ROWS);
 		CudaMirrorBuffer<int8_t> ref(ROWS * COLS);
 
 		random_init_array(input.host(), ROWS * COLS);
@@ -797,8 +793,7 @@ namespace quantize
 
 		for (size_t i = 0; i < WARMUP; i++)
 		{
-			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(
-				input.device(), output.device(), row_max.device(), row_min.device(), row_scale.device(), row_zeropoint.device(), ROWS, COLS, QMIN, QMAX);
+			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -810,8 +805,7 @@ namespace quantize
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
-			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(
-				input.device(), output.device(), row_max.device(), row_min.device(), row_scale.device(), row_zeropoint.device(), ROWS, COLS, QMIN, QMAX);
+			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
 
@@ -821,30 +815,22 @@ namespace quantize
 		cudaEventDestroy(start);
 		cudaEventDestroy(stop);
 
-		row_max.to_host();
-		row_min.to_host();
-		row_scale.to_host();
-		row_zeropoint.to_host();
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		for (int i = 0; i < WARMUP; i++)
-			quantize_cpu(input.host(), ref.host(), ref_max.host(), ref_min.host(), ref_scale.host(), ref_zeropoint.host());
+			quantize_cpu(input.host(), ref.host());
 
 		auto begin = std::chrono::high_resolution_clock::now();
 
 		for (int i = 0; i < NREPEATS; i++)
-			quantize_cpu(input.host(), ref.host(), ref_max.host(), ref_min.host(), ref_scale.host(), ref_zeropoint.host());
+			quantize_cpu(input.host(), ref.host());
 
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - begin;
 
 		double time_ref = elapsed.count() / NREPEATS * 1e3;
 
-		compare_array(row_max.host(), ref_max.host(), ROWS, 0.f);
-		compare_array(row_min.host(), ref_min.host(), ROWS, 0.f);
-		compare_array(row_scale.host(), ref_scale.host(), ROWS, 0.f);
-		compare_array(row_zeropoint.host(), ref_zeropoint.host(), ROWS, 0.f);
 		compare_array(output.host(), ref.host(), ROWS * COLS, 0.f);
 
 		cout << "quantize\t\tversion " << version << "\tREF" << endl;

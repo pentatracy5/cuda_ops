@@ -133,7 +133,7 @@ namespace quantize
 	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
 
 	template <QuantizeType qtype>
-	__global__ void v0(float* d_input, int8_t* d_output, float* d_max, float* d_min, float* d_scale, float* d_zeropoint, const int rows, const int cols, const float qmin, const float qmax);
+	__global__ void v0(float* d_input, int8_t* d_output, const int rows, const int cols, const float qmin, const float qmax);
 
 	using Kernel = decltype(&v0<QUANTIZETYPE>);
 

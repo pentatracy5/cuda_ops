@@ -64,7 +64,7 @@ namespace quantize
     }
 
     template <QuantizeType qtype>
-    __global__ void v0(float* d_input, int8_t* d_output, float* d_max, float* d_min, float* d_scale, float* d_zeropoint, const int rows, const int cols, const float qmin, const float qmax)
+    __global__ void v0(float* d_input, int8_t* d_output, const int rows, const int cols, const float qmin, const float qmax)
     {
         extern __shared__ float smem[];
         float* smem_max = smem;
@@ -109,8 +109,6 @@ namespace quantize
 
             if (0 == tid)
             {
-                d_max[row_idx] = row_max;
-                d_min[row_idx] = row_min;
                 if constexpr (qtype == ASYMMETRIC)
                 {
                     smem_scale = (row_max - row_min) / (qmax - qmin);
@@ -121,8 +119,6 @@ namespace quantize
                     smem_scale = max(fabs(row_max), fabs(row_min)) / qmax;
                     smem_zeropoint = 0.f;
                 }
-                d_scale[row_idx] = smem_scale;
-                d_zeropoint[row_idx] = smem_zeropoint;
             }
             __syncthreads();
 
@@ -143,5 +139,5 @@ namespace quantize
         }
     }
 
-    template __global__ void v0<QUANTIZETYPE>(float*, int8_t*, float*, float*, float*, float*, const int, const int, const float, const float);
+    template __global__ void v0<QUANTIZETYPE>(float*, int8_t*, const int, const int, const float, const float);
 }
