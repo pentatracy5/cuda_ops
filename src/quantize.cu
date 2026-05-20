@@ -3,7 +3,6 @@
 #include <device_functions.h>
 #include <kernel.cuh>
 #include <define.cuh>
-#include <utils.cuh>
 
 namespace quantize
 {
