@@ -3,11 +3,6 @@
 #include <test.cuh>
 #include <config.cuh>
 
-using std::cout;
-using std::endl; 
-using std::istringstream;
-using std::cerr;
-
 void run(unsigned int type, unsigned int version)
 {
 	if (0 == type)
@@ -48,21 +43,21 @@ int main(int argc, char* argv[])
 {
 	if (argc != 3)
 	{
-		cout << "Error: require 2 arguments, but " << argc - 1 << " provided." << endl;
+		std::cout << "Error: require 2 arguments, but " << argc - 1 << " provided." << std::endl;
 		return 1;
 	}
 
 	unsigned int type;
-	istringstream iss1(argv[1]);
+	std::istringstream iss1(argv[1]);
 	if (!(iss1 >> type)) {
-		cerr << "Error: invalid ops type." << endl;
+		std::cerr << "Error: invalid ops type." << std::endl;
 		return 1;
 	}
 
 	unsigned int version;
-	istringstream iss2(argv[2]);
+	std::istringstream iss2(argv[2]);
 	if (!(iss2 >> version)) {
-		cerr << "Error: invalid ops version." << endl;
+		std::cerr << "Error: invalid ops version." << std::endl;
 		return 1;
 	}
 

@@ -3,8 +3,6 @@
 #include <kernel.cuh>
 #include <define.cuh>
 
-using std::min;
-
 namespace stream_schedule
 {
     void depth_first(cudaStream_t* streams, const int num_streams, float* h_a, float* h_b, float* h_c, float* d_a, float* d_b, float* d_c, const int size)

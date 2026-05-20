@@ -10,15 +10,6 @@
 #include <utils.cuh>
 #include <cub/cub.cuh>
 
-using std::cout;
-using std::endl;
-using std::sort;
-using std::vector;
-using std::max;
-using std::min;
-using std::nearbyint;
-using std::clamp;
-
 namespace elementwise_add
 {
 	void run(unsigned int version)
@@ -120,10 +111,10 @@ namespace elementwise_add
 
 		compare_array(c.host(), ref.host(), N, 0);
 
-		cout << "elementwise add\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << elementwise_add::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_add::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
-		cout << endl;
+		std::cout << "elementwise add\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_add::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << elementwise_add::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_add::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -291,10 +282,10 @@ namespace reduce_sum
 
 		compare_array(output.host(), ref.host(), 1, TOLERANCELOOSE);
 
-		cout << "reduce sum\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << reduce_sum::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << reduce_sum::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
-		cout << endl;
+		std::cout << "reduce sum\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << reduce_sum::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << reduce_sum::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << reduce_sum::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -417,10 +408,10 @@ namespace histogram
 
 		compare_array(bin.host(), ref.host(), BINSIZE, 0);
 
-		cout << "histogram\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time << " GB/s\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << histogram::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << histogram::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
-		cout << endl;
+		std::cout << "histogram\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time << " GB/s\t" << histogram::get_bytes_transferred(N, BINSIZE) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << histogram::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << histogram::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -556,14 +547,14 @@ namespace copy_if
 		float time_ref = milliseconds / NREPEATS;
 
 		compare_array(dst_size.host(), ref_size.host(), 1, 0);
-		sort(dst.host(), dst.host() + dst_size.host()[0]);
-		sort(ref.host(), ref.host() + ref_size.host()[0]);
+		std::sort(dst.host(), dst.host() + dst_size.host()[0]);
+		std::sort(ref.host(), ref.host() + ref_size.host()[0]);
 		compare_array(dst.host(), ref.host(), dst_size.host()[0], 0.f);
 
-		cout << "copy if\t\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << copy_if::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << copy_if::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << copy_if::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << copy_if::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << endl;
-		cout << endl;
+		std::cout << "copy if\t\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << copy_if::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << copy_if::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << copy_if::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << copy_if::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -656,10 +647,10 @@ namespace elementwise_gelu
 
 		compare_array(output.host(), ref.host(), N, TOLERANCETIGHT);
 
-		cout << "elementwise gelu\tversion " << version << "\t\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS(FP16)" << endl;
-		cout << endl;
+		std::cout << "elementwise gelu\tversion " << version << "\t\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time << " GB/s\t\t" << elementwise_gelu::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time << " GFLOPS(FP16)\t" << elementwise_gelu::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS(FP16)" << std::endl;
+		std::cout << std::endl;
 	}
 }
 
@@ -674,7 +665,7 @@ namespace stream_schedule
 		random_init_array(a.host(), N);
 		random_init_array(b.host(), N);
 
-		vector<cudaStream_t> streams(MAXNUMSTREAMS);
+		std::vector<cudaStream_t> streams(MAXNUMSTREAMS);
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
@@ -706,7 +697,7 @@ namespace stream_schedule
 		cudaEventCreate(&start);
 		cudaEventCreate(&stop);
 
-		vector<cudaStream_t> streams(MAXNUMSTREAMS);
+		std::vector<cudaStream_t> streams(MAXNUMSTREAMS);
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
@@ -730,9 +721,9 @@ namespace stream_schedule
 
 			compare_array(c.host(), ref.host(), N, 0.f);
 
-			cout << "stream schedule\tversion " << version << "\t" << num_streams << " streams" << endl;
-			cout << "Time cost:\t\t\t" << time << " ms\t" << endl;
-			cout << endl;
+			std::cout << "stream schedule\tversion " << version << "\t" << num_streams << " streams" << std::endl;
+			std::cout << "Time cost:\t\t\t" << time << " ms\t" << std::endl;
+			std::cout << std::endl;
 		}
 
 		for (auto& stream : streams)
@@ -771,7 +762,7 @@ namespace quantize
 				zeropoint = 0.f;
 			}
 			for (int k = 0; k < COLS; k++)
-				h_output[j * COLS + k] = clamp(nearbyint(h_input[j * COLS + k] / scale + zeropoint), QMIN, QMAX);
+				h_output[j * COLS + k] = std::clamp(nearbyint(h_input[j * COLS + k] / scale + zeropoint), QMIN, QMAX);
 		}
 	}
 
@@ -833,9 +824,9 @@ namespace quantize
 
 		compare_array(output.host(), ref.host(), ROWS * COLS, 0.f);
 
-		cout << "quantize\t\tversion " << version << "\tREF" << endl;
-		cout << "Memory Bandwidth:\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << endl;
-		cout << "Achieved GFLOPS:\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << endl;
-		cout << endl;
+		std::cout << "quantize\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
 	}
 }

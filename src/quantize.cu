@@ -3,6 +3,7 @@
 #include <device_functions.h>
 #include <kernel.cuh>
 #include <define.cuh>
+#include <utils.cuh>
 
 namespace quantize
 {
@@ -30,12 +31,6 @@ namespace quantize
             shared_mem_bytes = 0;
         }
         return;
-    }
-
-    template <typename T>
-    __device__ __forceinline__ T clamp(T val, T lo, T hi)
-    {
-        return min(max(val, lo), hi);
     }
 
     template<int warp_size>
@@ -72,7 +67,7 @@ namespace quantize
         float& smem_zeropoint = smem[blockDim.x / 16 + 1];
 
         int row_stride = gridDim.x;
-        int col_stride = blockDim.x * 4; 
+        int col_stride = blockDim.x * 4;
         int tid = threadIdx.x;
         int row_idx = blockIdx.x;
         int col_idx;
