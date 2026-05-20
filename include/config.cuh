@@ -16,6 +16,6 @@ constexpr float COMPARE = 0.5f;
 constexpr float LOWERLEVEL = 0.0;
 constexpr float UPPERLEVEL = 1.0;
 constexpr int MAXNUMSTREAMS = 4;
-constexpr QuantizeType QUANTIZETYPE = SYMMETRIC_PER_CHANNEL;
+constexpr QuantizeType QUANTIZETYPE = ASYMMETRIC;
 constexpr float QMAX = 127;
 constexpr float QMIN = -128;

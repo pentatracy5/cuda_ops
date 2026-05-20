@@ -14,6 +14,10 @@ using std::cout;
 using std::endl;
 using std::sort;
 using std::vector;
+using std::max;
+using std::min;
+using std::nearbyint;
+using std::clamp;
 
 namespace elementwise_add
 {
@@ -736,5 +740,116 @@ namespace stream_schedule
 
 		cudaEventDestroy(start);
 		cudaEventDestroy(stop);
+	}
+}
+
+namespace quantize
+{
+	void quantize_cpu(float* h_input, int8_t* h_output, float* h_max, float* h_min, float* h_scale, float* h_zeropoint)
+	{
+		for (int j = 0; j < ROWS; j++)
+		{
+			h_max[j] = FLT_MIN;
+			h_min[j] = FLT_MAX;
+			for (int k = 0; k < COLS; k++)
+			{
+				h_max[j] = max(h_max[j], h_input[j * COLS + k]);
+				h_min[j] = min(h_min[j], h_input[j * COLS + k]);
+			}
+			if constexpr (QUANTIZETYPE == ASYMMETRIC)
+			{
+				h_scale[j] = (h_max[j] - h_min[j]) / (QMAX - QMIN);
+				h_zeropoint[j] = QMIN - nearbyint(h_min[j] / h_scale[j]);
+			}
+			else
+			{
+				h_scale[j] = max(fabs(h_max[j]), fabs(h_min[j])) / QMAX;
+				h_zeropoint[j] = 0.f;
+			}
+			for (int k = 0; k < COLS; k++)
+				h_output[j * COLS + k] = clamp(nearbyint(h_input[j * COLS + k] / h_scale[j] + h_zeropoint[j]), QMIN, QMAX);
+		}
+	}
+
+	void run(unsigned int version) {}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> input(ROWS * COLS);
+		CudaMirrorBuffer<float> row_max(ROWS);
+		CudaMirrorBuffer<float> row_min(ROWS);
+		CudaMirrorBuffer<float> row_scale(ROWS);
+		CudaMirrorBuffer<float> row_zeropoint(ROWS);
+		CudaMirrorBuffer<int8_t> output(ROWS * COLS);
+		CudaMirrorBuffer<float> ref_max(ROWS);
+		CudaMirrorBuffer<float> ref_min(ROWS);
+		CudaMirrorBuffer<float> ref_scale(ROWS);
+		CudaMirrorBuffer<float> ref_zeropoint(ROWS);
+		CudaMirrorBuffer<int8_t> ref(ROWS * COLS);
+
+		random_init_array(input.host(), ROWS * COLS);
+		input.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		int shared_mem_bytes;
+		quantize::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(
+				input.device(), output.device(), row_max.device(), row_min.device(), row_scale.device(), row_zeropoint.device(), ROWS, COLS, QMIN, QMAX);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(
+				input.device(), output.device(), row_max.device(), row_min.device(), row_scale.device(), row_zeropoint.device(), ROWS, COLS, QMIN, QMAX);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		row_max.to_host();
+		row_min.to_host();
+		row_scale.to_host();
+		row_zeropoint.to_host();
+		output.to_host();
+		float time = milliseconds / NREPEATS;
+
+		for (int i = 0; i < WARMUP; i++)
+			quantize_cpu(input.host(), ref.host(), ref_max.host(), ref_min.host(), ref_scale.host(), ref_zeropoint.host());
+
+		auto begin = std::chrono::high_resolution_clock::now();
+
+		for (int i = 0; i < NREPEATS; i++)
+			quantize_cpu(input.host(), ref.host(), ref_max.host(), ref_min.host(), ref_scale.host(), ref_zeropoint.host());
+
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - begin;
+
+		double time_ref = elapsed.count() / NREPEATS * 1e3;
+
+		compare_array(row_max.host(), ref_max.host(), ROWS, 0.f);
+		compare_array(row_min.host(), ref_min.host(), ROWS, 0.f);
+		compare_array(row_scale.host(), ref_scale.host(), ROWS, 0.f);
+		compare_array(row_zeropoint.host(), ref_zeropoint.host(), ROWS, 0.f);
+		compare_array(output.host(), ref.host(), ROWS * COLS, 0.f);
+
+		cout << "quantize\t\tversion " << version << "\tREF" << endl;
+		cout << "Memory Bandwidth:\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << quantize::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << endl;
+		cout << "Achieved GFLOPS:\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << quantize::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << endl;
+		cout << endl;
 	}
 }

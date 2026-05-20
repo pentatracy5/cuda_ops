@@ -35,3 +35,9 @@ namespace stream_schedule
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace quantize
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

@@ -22,6 +22,8 @@ void run(unsigned int type, unsigned int version)
 		elementwise_gelu::run(version);
 	else if (5 == type)
 		stream_schedule::run(version);
+	else if (6 == type)
+		quantize::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -38,6 +40,8 @@ void test(unsigned int type, unsigned int version)
 		elementwise_gelu::test(version);
 	else if (5 == type)
 		stream_schedule::test(version);
+	else if (6 == type)
+		quantize::test(version);
 }
 
 int main(int argc, char* argv[])

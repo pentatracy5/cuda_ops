@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cuda_runtime.h>
-#include <cuda_fp16.h>
+#include <types.cuh>
+#include <config.cuh>
 
 namespace elementwise_add 
 {
@@ -121,4 +122,20 @@ namespace stream_schedule
 	using Kernel = decltype(&depth_first);
 
 	static const Kernel kernels[]{ depth_first, breadth_first };
+}
+
+namespace quantize
+{
+	int get_FLOPs(const int rows, const int cols);
+
+	int get_bytes_transferred(const int rows, const int cols);
+
+	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+
+	template <QuantizeType qtype>
+	__global__ void v0(float* d_input, int8_t* d_output, float* d_max, float* d_min, float* d_scale, float* d_zeropoint, const int rows, const int cols, const float qmin, const float qmax);
+
+	using Kernel = decltype(&v0<QUANTIZETYPE>);
+
+	static const Kernel kernels[]{ v0<QUANTIZETYPE> };
 }

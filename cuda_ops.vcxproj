@@ -95,6 +95,7 @@
       <Include>$(SolutionDir)include;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -121,6 +122,7 @@
       <Include>$(SolutionDir)include;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
+      <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
