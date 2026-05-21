@@ -766,7 +766,32 @@ namespace quantize
 		}
 	}
 
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> input(ROWS * COLS);
+		CudaMirrorBuffer<int8_t> output(ROWS * COLS);
+
+		random_init_array(input.host(), ROWS * COLS);
+		input.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			for (int i = 0; i < NREPEATS; i++)
+				quantize_cpu(input.host(), output.host());
+		} 
+		else
+		{
+			int num_threads;
+			int threads_per_block;
+			int shared_mem_bytes;
+			quantize::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
 
 	void test(unsigned int version)
 	{
