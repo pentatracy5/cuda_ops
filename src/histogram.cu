@@ -20,12 +20,12 @@ namespace histogram
         threads_per_block = 512;
         if (0 == version)
         {
-            num_threads = size / 128;
+            num_threads = (size / 4 + 31) / 32;
             shared_mem_bytes = 0;
         }
         else if (1 == version)
         {
-            num_threads = size / 128;
+            num_threads = (size / 4 + 31) / 32;
             shared_mem_bytes = bin_size * sizeof(int);
         }
         return;

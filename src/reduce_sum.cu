@@ -46,7 +46,7 @@ namespace reduce_sum
         }
         else if (7 <= version && 9 > version)
         {
-            num_threads = size / 128;
+            num_threads = (size / 4 + 31) / 32;
             shared_mem_bytes = threads_per_block / 32 * sizeof(float);
         }
         else

@@ -19,7 +19,7 @@ namespace elementwise_gelu
     {
         threads_per_block = 512;
         if (3 > version)
-            num_threads = size / 128;
+            num_threads = (size / 4 + 31) / 32;
         else if ((sizeof(kernels) / sizeof(kernels[0]) - 1) == version)
             num_threads = size;
         return;

@@ -20,12 +20,12 @@ namespace copy_if
         threads_per_block = 512;
         if (2 > version)
         {
-            num_threads = size / 32;
+            num_threads = (size / 4 + 7) / 8;
             shared_mem_bytes = 0;
         }
         else if (2 <= version && 4 > version)
         {
-            num_threads = size / 32;
+            num_threads = (size / 4 + 7) / 8;
             shared_mem_bytes = sizeof(int);
         }
         return;
