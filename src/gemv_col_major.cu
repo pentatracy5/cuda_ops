@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <device_functions.h>
 #include <kernel.cuh>
 #include <define.cuh>
 #include <utils.cuh>
@@ -18,7 +17,7 @@ namespace gemv_col_major
         return rows * cols + cols + rows;
     }
 
-    void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
+    void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes)
     {
         if (0 == version)
         {

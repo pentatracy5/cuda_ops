@@ -10,7 +10,7 @@ namespace elementwise_add
 
 	int get_bytes_transferred(const int size);
 
-	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
+	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
 	__global__ void no_vectorize(float* a, float* b, float* c, const int size);
 
@@ -29,7 +29,7 @@ namespace reduce_sum
 
 	int get_bytes_transferred(const int size);
 
-	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* input, float* output, const int size);
 
@@ -60,7 +60,7 @@ namespace histogram
 
 	int get_bytes_transferred(const int size, const int bin_size);
 
-	void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* data, int* bin, const int size, const int bin_size, const float lower_level, const float upper_level);
 
@@ -77,7 +77,7 @@ namespace copy_if
 
 	int get_bytes_transferred(const int size);
 
-	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* src, float* dst, int* dst_size, const int size, const float compare);
 
@@ -98,7 +98,7 @@ namespace elementwise_gelu
 
 	int get_bytes_transferred(const int size);
 
-	void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block);
+	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
 	__global__ void v0(__half* input, __half* output, const int size);
 
@@ -130,7 +130,7 @@ namespace quantize
 
 	int get_bytes_transferred(const int rows, const int cols);
 
-	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	template <QuantizeType qtype>
 	__global__ void v0(float* d_input, int8_t* d_output, const int rows, const int cols, const float qmin, const float qmax);
@@ -146,7 +146,7 @@ namespace softmax
 
 	int get_bytes_transferred(const int rows, const int cols);
 
-	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* d_input, float* d_output, const int rows, const int cols);
 
@@ -161,7 +161,7 @@ namespace gemv_col_major
 
 	int get_bytes_transferred(const int rows, const int cols);
 
-	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
 	__global__ void v0(float* m, float* v, float* d_output, const int rows, const int cols);
 

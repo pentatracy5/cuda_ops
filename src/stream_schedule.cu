@@ -15,8 +15,8 @@ namespace stream_schedule
             const int offset = i * size_per_stream;
             const int current_size = min(size_per_stream, size - offset);
             const int bytes_per_stream = current_size * sizeof(float);
-            int num_threads;
-            int threads_per_block;
+            dim3 num_threads;
+            dim3 threads_per_block;
             elementwise_add::get_kernel_launch_params(current_size, version, num_threads, threads_per_block);
             cudaMemcpyAsync(d_a + offset, h_a + offset, bytes_per_stream, cudaMemcpyHostToDevice, streams[i]);
             CHECK_CUDA_ERROR("cudaMemcpyAsync failed");
@@ -48,8 +48,8 @@ namespace stream_schedule
         {
             const int offset = i * size_per_stream;
             const int current_size = min(size_per_stream, size - offset);
-            int num_threads;
-            int threads_per_block;
+            dim3 num_threads;
+            dim3 threads_per_block;
             elementwise_add::get_kernel_launch_params(current_size, version, num_threads, threads_per_block);
             CUDA_LAUNCH_SHAREDMEM_STREAM(elementwise_add::kernels[version], num_threads, threads_per_block, shared_mem_bytes, streams[i])(d_a + offset, d_b + offset, d_c + offset, current_size);
             CHECK_CUDA_ERROR("run kernel failed");

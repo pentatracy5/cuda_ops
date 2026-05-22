@@ -1,6 +1,5 @@
 ﻿#include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <device_functions.h>
 #include <kernel.cuh>
 #include <define.cuh>
 
@@ -16,7 +15,7 @@ namespace reduce_sum
         return (size + 1) * sizeof(float);
     }
 
-    void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
+    void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes)
     {
         threads_per_block = 512;
         if (0 == version)
@@ -32,22 +31,22 @@ namespace reduce_sum
         else if (2 == version)
         {
             num_threads = size;
-            shared_mem_bytes = threads_per_block * sizeof(float);
+            shared_mem_bytes = threads_per_block.x * sizeof(float);
         }
         else if (3 <= version && 6 > version)
         {
             num_threads = size / 4;
-            shared_mem_bytes = threads_per_block * sizeof(float);
+            shared_mem_bytes = threads_per_block.x * sizeof(float);
         }
         else if (6 == version)
         {
             num_threads = size / 4;
-            shared_mem_bytes = threads_per_block / 32 * sizeof(float);
+            shared_mem_bytes = threads_per_block.x / 32 * sizeof(float);
         }
         else if (7 <= version && 9 > version)
         {
             num_threads = (size / 4 + 31) / 32;
-            shared_mem_bytes = threads_per_block / 32 * sizeof(float);
+            shared_mem_bytes = threads_per_block.x / 32 * sizeof(float);
         }
         else
         {

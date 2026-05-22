@@ -15,7 +15,7 @@ namespace histogram
         return size * sizeof(float) + 2 * bin_size * sizeof(int);
     }
 
-    void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
+    void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes)
     {
         threads_per_block = 512;
         if (0 == version)

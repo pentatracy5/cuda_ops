@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <device_functions.h>
 #include <kernel.cuh>
 #include <define.cuh>
 #include <utils.cuh>
@@ -18,13 +17,13 @@ namespace softmax
         return rows * cols * sizeof(float) * 2;
     }
 
-    void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes)
+    void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes)
     {
         threads_per_block = 512;
         if (0 == version)
         {
-            num_threads = (rows + 255) / 256 * threads_per_block;
-            shared_mem_bytes = (threads_per_block / 32 + 1) * sizeof(float); // threads_per_block / 32 个 fp32 用于 reduce max/sum，1 个 fp32 用于存储 reduce max/sum 结果
+            num_threads = (rows + 255) / 256 * threads_per_block.x;
+            shared_mem_bytes = (threads_per_block.x / 32 + 1) * sizeof(float); // threads_per_block / 32 个 fp32 用于 reduce max/sum，1 个 fp32 用于存储 reduce max/sum 结果
         }
         else
         {

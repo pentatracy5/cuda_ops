@@ -35,8 +35,8 @@ namespace elementwise_add
 		}
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			elementwise_add::get_kernel_launch_params(N, version, num_threads, threads_per_block);
 
 			for (size_t i = 0; i < NREPEATS; i++)
@@ -59,8 +59,8 @@ namespace elementwise_add
 		a.to_device();
 		b.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		elementwise_add::get_kernel_launch_params(N, version, num_threads, threads_per_block);
 
 		for (size_t i = 0; i < WARMUP; i++)
@@ -148,12 +148,12 @@ namespace reduce_sum
 		}
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			int shared_mem_bytes;
 			reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
-			int temp_size = NUM_GRIDS(num_threads, threads_per_block);
+			int temp_size = N_BLOCKS(num_threads, threads_per_block).x;
 			CudaMirrorBuffer<float> temp_storage(temp_size);
 
 			if (8 == version)
@@ -187,12 +187,12 @@ namespace reduce_sum
 		random_init_array(input.host(), N);
 		input.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
-		int temp_size = NUM_GRIDS(num_threads, threads_per_block);
+		int temp_size = N_BLOCKS(num_threads, threads_per_block).x;
 		CudaMirrorBuffer<float> temp_storage(temp_size);
 
 		if (8 == version)
@@ -319,8 +319,8 @@ namespace histogram
 		}
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			int shared_mem_bytes;
 			histogram::get_kernel_launch_params(N, BINSIZE, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -342,8 +342,8 @@ namespace histogram
 		random_init_array(data.host(), N);
 		data.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		histogram::get_kernel_launch_params(N, BINSIZE, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -454,8 +454,8 @@ namespace copy_if
 		}
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			int shared_mem_bytes;
 			copy_if::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -479,8 +479,8 @@ namespace copy_if
 		random_init_array(src.host(), N);
 		src.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		copy_if::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -568,8 +568,8 @@ namespace elementwise_gelu
 		random_init_array(input.host(), N);
 		input.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		if constexpr (PROFILEREF)
 			version = sizeof(elementwise_gelu::kernels) / sizeof(elementwise_gelu::kernels[0]) - 1;
 		elementwise_gelu::get_kernel_launch_params(N, version, num_threads, threads_per_block);
@@ -590,8 +590,8 @@ namespace elementwise_gelu
 		random_init_array(input.host(), N);
 		input.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		elementwise_gelu::get_kernel_launch_params(N, version, num_threads, threads_per_block);
 
 		for (size_t i = 0; i < WARMUP; i++)
@@ -669,7 +669,7 @@ namespace stream_schedule
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
-		for (size_t num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
+		for (int num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
 			for (size_t i = 0; i < NREPEATS; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
@@ -701,7 +701,7 @@ namespace stream_schedule
 		for (auto& stream : streams)
 			cudaStreamCreate(&stream);
 
-		for (size_t num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
+		for (int num_streams = 1; num_streams <= MAXNUMSTREAMS; num_streams++)
 		{
 			c.memset(0);
 
@@ -762,7 +762,7 @@ namespace quantize
 				zeropoint = 0.f;
 			}
 			for (int k = 0; k < COLS; k++)
-				h_output[j * COLS + k] = std::clamp(nearbyint(h_input[j * COLS + k] / scale + zeropoint), QMIN, QMAX);
+				h_output[j * COLS + k] = int8_t(std::clamp(nearbyint(h_input[j * COLS + k] / scale + zeropoint), QMIN, QMAX));
 		}
 	}
 
@@ -781,8 +781,8 @@ namespace quantize
 		} 
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			int shared_mem_bytes;
 			quantize::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
 			for (size_t i = 0; i < NREPEATS; i++)
@@ -802,8 +802,8 @@ namespace quantize
 		random_init_array(input.host(), ROWS * COLS);
 		input.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		quantize::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -892,8 +892,8 @@ namespace softmax
 		}
 		else
 		{
-			int num_threads;
-			int threads_per_block;
+			dim3 num_threads;
+			dim3 threads_per_block;
 			int shared_mem_bytes;
 			softmax::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
 			for (size_t i = 0; i < NREPEATS; i++)
@@ -913,8 +913,8 @@ namespace softmax
 		random_init_array(input.host(), ROWS * COLS);
 		input.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		softmax::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
 
@@ -991,8 +991,8 @@ namespace gemv_col_major
 		m.to_device();
 		v.to_device();
 
-		int num_threads;
-		int threads_per_block;
+		dim3 num_threads;
+		dim3 threads_per_block;
 		int shared_mem_bytes;
 		gemv_col_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
 

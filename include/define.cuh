@@ -5,13 +5,14 @@
 #include <string>
 #include <types.cuh>
 
-#define NUM_GRIDS(n_threads, threads_per_block)                                                         ((n_threads + threads_per_block - 1) / threads_per_block)
+#define NBS_PER_DIM(n_threads, threads_per_block)   ((n_threads + threads_per_block - 1) / threads_per_block)
+#define N_BLOCKS(n_threads, threads_per_block)      (dim3{NBS_PER_DIM(n_threads.x, threads_per_block.x), NBS_PER_DIM(n_threads.y, threads_per_block.y), NBS_PER_DIM(n_threads.z, threads_per_block.z)})
 
 #ifndef __INTELLISENSE__
 
-#define CUDA_LAUNCH(kernel, n_threads, threads_per_block)										        kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block>>>
-#define CUDA_LAUNCH_SHAREDMEM(kernel, n_threads, threads_per_block, shared_mem_bytes)				    kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes>>>
-#define CUDA_LAUNCH_SHAREDMEM_STREAM(kernel, n_threads, threads_per_block, shared_mem_bytes, stream)	kernel<<<NUM_GRIDS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes, stream>>>
+#define CUDA_LAUNCH(kernel, n_threads, threads_per_block)										        kernel<<<N_BLOCKS(n_threads, threads_per_block), threads_per_block>>>
+#define CUDA_LAUNCH_SHAREDMEM(kernel, n_threads, threads_per_block, shared_mem_bytes)				    kernel<<<N_BLOCKS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes>>>
+#define CUDA_LAUNCH_SHAREDMEM_STREAM(kernel, n_threads, threads_per_block, shared_mem_bytes, stream)	kernel<<<N_BLOCKS(n_threads, threads_per_block), threads_per_block, shared_mem_bytes, stream>>>
 
 #else
 

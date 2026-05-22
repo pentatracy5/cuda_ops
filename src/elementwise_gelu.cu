@@ -15,7 +15,7 @@ namespace elementwise_gelu
         return 2 * size * sizeof(__half);
     }
 
-    void get_kernel_launch_params(const int size, const unsigned int version, int& num_threads, int& threads_per_block) 
+    void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block) 
     {
         threads_per_block = 512;
         if (3 > version)

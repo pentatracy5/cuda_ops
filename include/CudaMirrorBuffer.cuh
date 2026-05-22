@@ -27,7 +27,7 @@ template<typename T>
 class CudaMirrorBuffer
 {
 public:
-    explicit CudaMirrorBuffer(size_t size, cudaStream_t stream = 0):
+    explicit CudaMirrorBuffer(unsigned int size, cudaStream_t stream = 0):
         size_(size), 
         h_ptr_(nullptr), 
         d_ptr_(nullptr) 
@@ -43,7 +43,7 @@ public:
         cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
         CHECK_CUDA_ERROR("cudaMalloc failed");
 
-        CUDA_LAUNCH_SHAREDMEM_STREAM(construct_device_array<T>, size_, 512, 0, stream)(d_ptr_, size_);
+        CUDA_LAUNCH_SHAREDMEM_STREAM(construct_device_array<T>, dim3{ size_ }, dim3{ 512 }, 0, stream)(d_ptr_, size_);
         CHECK_CUDA_ERROR("construct device array failed");
     }
 
@@ -105,7 +105,7 @@ public:
         return d_ptr_;
     }
 
-    size_t size() const 
+    unsigned int size() const 
     { 
         return size_;
     }
@@ -151,7 +151,7 @@ public:
         }
     }
 
-    void resize(size_t newSize) 
+    void resize(unsigned int newSize) 
     {
         if (newSize == size_) 
             return;
@@ -181,7 +181,7 @@ public:
         if (empty())
             return;
         std::fill(h_ptr_, h_ptr_ + size_, val);
-        CUDA_LAUNCH_SHAREDMEM_STREAM(constant_val_set_kernel<T>, size_, 512, 0, stream)(d_ptr_, size_, val);
+        CUDA_LAUNCH_SHAREDMEM_STREAM(constant_val_set_kernel<T>, dim3{ size_ }, dim3{ 512 }, 0, stream)(d_ptr_, size_, val);
         CHECK_CUDA_ERROR("constant_val_set kernel failed");
     }
 
@@ -205,7 +205,7 @@ private:
     }
 
 private:
-    size_t size_;
+    unsigned int size_;
     T* h_ptr_;
     T* d_ptr_;
 };
