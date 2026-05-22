@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 #include <malloc.h>
 #include <utility>
 #include <cassert>
@@ -26,7 +27,7 @@ template<typename T>
 class CudaMirrorBuffer
 {
 public:
-    explicit CudaMirrorBuffer(size_t size): 
+    explicit CudaMirrorBuffer(size_t size, cudaStream_t stream = 0):
         size_(size), 
         h_ptr_(nullptr), 
         d_ptr_(nullptr) 
@@ -42,8 +43,7 @@ public:
         cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
         CHECK_CUDA_ERROR("cudaMalloc failed");
 
-        CUDA_LAUNCH(construct_device_array<T>, (size_ + 511) / 512, 512)(d_ptr_, size_);
-        cudaDeviceSynchronize();
+        CUDA_LAUNCH_SHAREDMEM_STREAM(construct_device_array<T>, size_, 512, 0, stream)(d_ptr_, size_);
         CHECK_CUDA_ERROR("construct device array failed");
     }
 
@@ -167,21 +167,21 @@ public:
         std::swap(d_ptr_, other.d_ptr_);
     }
 
-    void memset(int value)
+    void memset(int value, cudaStream_t stream = 0)
     {
         if (empty())
             return;
         std::memset(h_ptr_, value, size_ * sizeof(T));
-        cudaMemset(d_ptr_, value, size_ * sizeof(T));
-        CHECK_CUDA_ERROR("cudaMemset failed");
+        cudaMemsetAsync(d_ptr_, value, size_ * sizeof(T), stream);
+        CHECK_CUDA_ERROR("cudaMemsetAsync failed");
     }
 
-    void constant_val_set(const T& val)
+    void constant_val_set(const T& val, cudaStream_t stream = 0)
     {
         if (empty())
             return;
         std::fill(h_ptr_, h_ptr_ + size_, val);
-        CUDA_LAUNCH(constant_val_set_kernel<T>, (size_ + 511) / 512, 512)(d_ptr_, size_, val);
+        CUDA_LAUNCH_SHAREDMEM_STREAM(constant_val_set_kernel<T>, size_, 512, 0, stream)(d_ptr_, size_, val);
         CHECK_CUDA_ERROR("constant_val_set kernel failed");
     }
 
