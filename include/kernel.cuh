@@ -167,7 +167,9 @@ namespace gemv_col_major
 
 	__global__ void v1(float* m, float* v, float* d_output, const int rows, const int cols);
 
+	__global__ void v2(float* m, float* v, float* d_output, const int rows, const int cols);
+
 	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v0, v1 };
+	static const Kernel kernels[]{ v0, v1, v2 };
 }

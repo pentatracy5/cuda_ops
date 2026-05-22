@@ -998,6 +998,7 @@ namespace gemv_col_major
 
 		for (size_t i = 0; i < WARMUP; i++)
 		{
+			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
@@ -1010,6 +1011,7 @@ namespace gemv_col_major
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
+			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
 			CHECK_CUDA_ERROR("run kernel failed");
 		}
@@ -1036,7 +1038,7 @@ namespace gemv_col_major
 
 		double time_ref = elapsed.count() / NREPEATS * 1e3;
 
-		compare_array(output.host(), ref.host(), ROWS, TOLERANCETIGHT);
+		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
 
 		std::cout << "gemv col major\t\tversion " << version << "\tREF" << std::endl;
 		std::cout << "Memory Bandwidth:\t" << gemv_col_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << gemv_col_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << std::endl;

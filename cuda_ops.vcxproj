@@ -93,7 +93,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
-      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" -Xcompiler "/wd 4819" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
@@ -120,7 +120,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <Include>$(SolutionDir)include;%(Include)</Include>
-      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" -Xcompiler "/wd 4819" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
     </CudaCompile>
