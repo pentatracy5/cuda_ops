@@ -16,6 +16,7 @@
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\elementwise_gelu.cu" />
     <CudaCompile Include="src\gemv_col_major.cu" />
+    <CudaCompile Include="src\gemv_row_major.cu" />
     <CudaCompile Include="src\histogram.cu" />
     <CudaCompile Include="src\quantize.cu" />
     <CudaCompile Include="src\reduce_sum.cu" />

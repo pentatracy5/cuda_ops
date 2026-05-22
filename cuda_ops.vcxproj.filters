@@ -45,6 +45,9 @@
     <CudaCompile Include="src\stream_schedule.cu">
       <Filter>src</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\gemv_row_major.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\kernel.cuh">
