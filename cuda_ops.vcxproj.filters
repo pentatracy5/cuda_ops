@@ -33,7 +33,7 @@
     <CudaCompile Include="src\quantize.cu">
       <Filter>src</Filter>
     </CudaCompile>
-    <CudaCompile Include="src\gemv.cu">
+    <CudaCompile Include="src\gemv_col_major.cu">
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\dropout.cu">
