@@ -41,3 +41,9 @@ namespace quantize
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace softmax
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

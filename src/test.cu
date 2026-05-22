@@ -855,3 +855,114 @@ namespace quantize
 		std::cout << std::endl;
 	}
 }
+
+namespace softmax
+{
+	void softmax_cpu(float* h_input, float* h_output)
+	{
+		float row_max;
+		float row_exp_sum;
+		for (int j = 0; j < ROWS; j++)
+		{
+			row_max = FLT_MIN;
+			for (int k = 0; k < COLS; k++)
+				row_max = max(row_max, h_input[j * COLS + k]);
+			for (int k = 0; k < COLS; k++)
+				h_output[j * COLS + k] = expf(h_input[j * COLS + k] - row_max);
+			row_exp_sum = 0.0f;
+			for (int k = 0; k < COLS; k++)
+				row_exp_sum += h_output[j * COLS + k];
+			for (int k = 0; k < COLS; k++)
+				h_output[j * COLS + k] /= row_exp_sum;
+		}
+	}
+
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> input(ROWS * COLS);
+		CudaMirrorBuffer<float> output(ROWS * COLS);
+
+		random_init_array(input.host(), ROWS * COLS);
+		input.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			for (int i = 0; i < NREPEATS; i++)
+				softmax_cpu(input.host(), output.host());
+		}
+		else
+		{
+			int num_threads;
+			int threads_per_block;
+			int shared_mem_bytes;
+			softmax::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> input(ROWS * COLS);
+		CudaMirrorBuffer<float> output(ROWS * COLS);
+		CudaMirrorBuffer<float> ref(ROWS * COLS);
+
+		random_init_array(input.host(), ROWS * COLS);
+		input.to_device();
+
+		int num_threads;
+		int threads_per_block;
+		int shared_mem_bytes;
+		softmax::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		output.to_host();
+		float time = milliseconds / NREPEATS;
+
+		for (int i = 0; i < WARMUP; i++)
+			softmax_cpu(input.host(), ref.host());
+
+		auto begin = std::chrono::high_resolution_clock::now();
+
+		for (int i = 0; i < NREPEATS; i++)
+			softmax_cpu(input.host(), ref.host());
+
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - begin;
+
+		double time_ref = elapsed.count() / NREPEATS * 1e3;
+
+		compare_array(output.host(), ref.host(), ROWS * COLS, TOLERANCETIGHT);
+
+		std::cout << "softmax\t\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << softmax::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << softmax::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << softmax::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << softmax::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
+	}
+}

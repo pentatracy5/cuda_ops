@@ -19,6 +19,8 @@ void run(unsigned int type, unsigned int version)
 		stream_schedule::run(version);
 	else if (6 == type)
 		quantize::run(version);
+	else if (7 == type)
+		softmax::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -37,6 +39,8 @@ void test(unsigned int type, unsigned int version)
 		stream_schedule::test(version);
 	else if (6 == type)
 		quantize::test(version);
+	else if (7 == type)
+		softmax::test(version);
 }
 
 int main(int argc, char* argv[])

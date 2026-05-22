@@ -139,3 +139,18 @@ namespace quantize
 
 	static const Kernel kernels[]{ v0<QUANTIZETYPE> };
 }
+
+namespace softmax
+{
+	int get_FLOPs(const int rows, const int cols);
+
+	int get_bytes_transferred(const int rows, const int cols);
+
+	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, int& num_threads, int& threads_per_block, int& shared_mem_bytes);
+
+	__global__ void v0(float* d_input, float* d_output, const int rows, const int cols);
+
+	using Kernel = decltype(&v0);
+
+	static const Kernel kernels[]{ v0 };
+}
