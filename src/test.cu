@@ -977,7 +977,36 @@ namespace gemv_col_major
 				output[row_idx] += m[col_idx * ROWS + row_idx] * v[col_idx];
 	}
 
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> m(ROWS * COLS);
+		CudaMirrorBuffer<float> v(COLS);
+		CudaMirrorBuffer<float> output(ROWS);
+
+		random_init_array(m.host(), ROWS * COLS);
+		random_init_array(v.host(), COLS);
+		m.to_device();
+		v.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			for (int i = 0; i < NREPEATS; i++)
+				gemv_col_major_cpu(m.host(), v.host(), output.host());
+		}
+		else
+		{
+			dim3 num_threads;
+			dim3 threads_per_block;
+			int shared_mem_bytes;
+			gemv_col_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				output.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
 
 	void test(unsigned int version)
 	{
@@ -1060,7 +1089,36 @@ namespace gemv_row_major
 		}
 	}
 
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		CudaMirrorBuffer<float> m(ROWS * COLS);
+		CudaMirrorBuffer<float> v(COLS);
+		CudaMirrorBuffer<float> output(ROWS);
+
+		random_init_array(m.host(), ROWS * COLS);
+		random_init_array(v.host(), COLS);
+		m.to_device();
+		v.to_device();
+
+		if constexpr (PROFILEREF)
+		{
+			for (int i = 0; i < NREPEATS; i++)
+				gemv_row_major_cpu(m.host(), v.host(), output.host());
+		}
+		else
+		{
+			dim3 num_threads;
+			dim3 threads_per_block;
+			int shared_mem_bytes;
+			gemv_row_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+			for (size_t i = 0; i < NREPEATS; i++)
+			{
+				output.memset(0);
+				CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
+				CHECK_CUDA_ERROR("run kernel failed");
+			}
+		}
+	}
 
 	void test(unsigned int version)
 	{
