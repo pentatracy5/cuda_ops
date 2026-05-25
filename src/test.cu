@@ -1046,3 +1046,86 @@ namespace gemv_col_major
 		std::cout << std::endl;
 	}
 }
+
+namespace gemv_row_major
+{
+	void gemv_row_major_cpu(float* m, float* v, float* output)
+	{
+		for (size_t row_idx = 0; row_idx < ROWS; row_idx++)
+		{
+			float res = 0.0f;
+			for (size_t col_idx = 0; col_idx < COLS; col_idx++)
+				res += m[row_idx * COLS + col_idx] * v[col_idx];
+			output[row_idx] = res;
+		}
+	}
+
+	void run(unsigned int version) {}
+
+	void test(unsigned int version)
+	{
+		CudaMirrorBuffer<float> m(ROWS * COLS);
+		CudaMirrorBuffer<float> v(COLS);
+		CudaMirrorBuffer<float> output(ROWS);
+		CudaMirrorBuffer<float> ref(ROWS);
+
+		random_init_array(m.host(), ROWS * COLS);
+		random_init_array(v.host(), COLS);
+		m.to_device();
+		v.to_device();
+
+		dim3 num_threads;
+		dim3 threads_per_block;
+		int shared_mem_bytes;
+		gemv_row_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
+
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			output.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		float milliseconds = 0;
+		cudaEvent_t start, stop;
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+		cudaEventRecord(start);
+
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			output.memset(0);
+			CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
+			CHECK_CUDA_ERROR("run kernel failed");
+		}
+
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+
+		output.to_host();
+		float time = milliseconds / NREPEATS;
+
+		for (int i = 0; i < WARMUP; i++)
+			gemv_row_major_cpu(m.host(), v.host(), ref.host());
+
+		auto begin = std::chrono::high_resolution_clock::now();
+
+		for (int i = 0; i < NREPEATS; i++)
+			gemv_row_major_cpu(m.host(), v.host(), ref.host());
+
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - begin;
+
+		double time_ref = elapsed.count() / NREPEATS * 1e3;
+
+		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
+
+		std::cout << "gemv row major\t\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << gemv_row_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << gemv_row_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << gemv_row_major::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << gemv_row_major::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
+	}
+}

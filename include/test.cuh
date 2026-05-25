@@ -53,3 +53,9 @@ namespace gemv_col_major
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace gemv_row_major
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

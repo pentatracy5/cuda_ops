@@ -23,6 +23,8 @@ void run(unsigned int type, unsigned int version)
 		softmax::run(version);
 	else if (8 == type)
 		gemv_col_major::run(version);
+	else if (9 == type)
+		gemv_row_major::run(version);
 }
 
 void test(unsigned int type, unsigned int version)
@@ -45,6 +47,8 @@ void test(unsigned int type, unsigned int version)
 		softmax::test(version);
 	else if (8 == type)
 		gemv_col_major::test(version);
+	else if (9 == type)
+		gemv_row_major::test(version);
 }
 
 int main(int argc, char* argv[])
