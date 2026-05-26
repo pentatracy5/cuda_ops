@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
-#include <stdexcept>
-#include <string>
+#include <iostream>
 #include <types.cuh>
 
 #define NBS_PER_DIM(n_threads, threads_per_block)   ((n_threads + threads_per_block - 1) / threads_per_block)
@@ -33,15 +32,45 @@ T __shfl_sync(unsigned mask, T var, int srcLane, int width = 32);
 
 #endif
 
-#define CHECK_CUDA_ERROR(msg) check_cuda_error_impl((msg), __FILE__, __LINE__)
-inline void check_cuda_error_impl(const char* msg, const char* file, int line)
-{
-    cudaError err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-        throw std::runtime_error(std::string(msg) + ": " + cudaGetErrorString(err) + " at file " + std::string(file) + " line " + std::to_string(line));
-    }
-}
+#define CUDA_CHECK(call)                                                         \
+    do {                                                                         \
+        cudaError_t err = call;                                                  \
+        if (err != cudaSuccess) {                                                \
+            std::cerr << "CUDA error: " << cudaGetErrorString(err)               \
+                      << " at " << __FILE__ << ":" << __LINE__ << std::endl;     \
+            exit(EXIT_FAILURE);                                                  \
+        }                                                                        \
+    } while (0)
+
+#define CUDA_KERNEL_LAUNCH_CHECK()                                               \
+    do {                                                                         \
+        cudaError_t err = cudaGetLastError();                                    \
+        if (err != cudaSuccess) {                                                \
+            std::cerr << "CUDA kernel launch error: " << cudaGetErrorString(err) \
+                      << " at " << __FILE__ << ":" << __LINE__ << std::endl;     \
+            exit(EXIT_FAILURE);                                                  \
+        }                                                                        \
+    } while (0)
+
+#define CUBLAS_CHECK(call)                                                       \
+    do {                                                                         \
+        cublasStatus_t status = call;                                            \
+        if (status != CUBLAS_STATUS_SUCCESS) {                                   \
+            std::cerr << "cuBLAS error: " << cublasGetStatusString(status)       \
+                      << " at " << __FILE__ << ":" << __LINE__ << std::endl;     \
+            exit(EXIT_FAILURE);                                                  \
+        }                                                                        \
+    } while (0)
+
+#define CUDNN_CHECK(call)                                                        \
+    do {                                                                         \
+        cudnnStatus_t status = call;                                             \
+        if (status != CUDNN_STATUS_SUCCESS) {                                    \
+            std::cerr << "cuDNN error: " << cudnnGetErrorString(status)          \
+                      << " at " << __FILE__ << ":" << __LINE__ << std::endl;     \
+            exit(EXIT_FAILURE);                                                  \
+        }                                                                        \
+    } while (0)
 
 #define FETCH_FLOAT2(var) (reinterpret_cast<float2*>(&(var))[0])
 #define FETCH_FLOAT4(var) (reinterpret_cast<float4*>(&(var))[0])

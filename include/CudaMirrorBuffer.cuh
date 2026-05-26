@@ -35,16 +35,14 @@ public:
         if (size_ == 0) 
             return;
 
-        cudaHostAlloc((void**)&h_ptr_, size_ * sizeof(T), cudaHostAllocDefault);
-        CHECK_CUDA_ERROR("cudaHostAlloc failed");
+        CUDA_CHECK(cudaHostAlloc((void**)&h_ptr_, size_ * sizeof(T), cudaHostAllocDefault));
         for (size_t i = 0; i < size; i++)
             new(h_ptr_ + i) T();
 
-        cudaMalloc((void**)&d_ptr_, size_ * sizeof(T));
-        CHECK_CUDA_ERROR("cudaMalloc failed");
+        CUDA_CHECK(cudaMalloc((void**)&d_ptr_, size_ * sizeof(T)));
 
         CUDA_LAUNCH_SHAREDMEM_STREAM(construct_device_array<T>, dim3{ size_ }, dim3{ 512 }, 0, stream)(d_ptr_, size_);
-        CHECK_CUDA_ERROR("construct device array failed");
+        CUDA_KERNEL_LAUNCH_CHECK();
     }
 
     ~CudaMirrorBuffer() 
@@ -119,8 +117,7 @@ public:
     {
         if (h_ptr_ && d_ptr_) 
         {
-            cudaMemcpy(d_ptr_, h_ptr_, size_ * sizeof(T), cudaMemcpyHostToDevice);
-            CHECK_CUDA_ERROR("syncHostToDevice failed");
+            CUDA_CHECK(cudaMemcpy(d_ptr_, h_ptr_, size_ * sizeof(T), cudaMemcpyHostToDevice));
         }
     }
 
@@ -128,8 +125,7 @@ public:
     {
         if (h_ptr_ && d_ptr_)
         {
-            cudaMemcpy(h_ptr_, d_ptr_, size_ * sizeof(T), cudaMemcpyDeviceToHost);
-            CHECK_CUDA_ERROR("syncDeviceToHost failed");
+            CUDA_CHECK(cudaMemcpy(h_ptr_, d_ptr_, size_ * sizeof(T), cudaMemcpyDeviceToHost));
         }
     }
 
@@ -137,8 +133,7 @@ public:
     {
         if (h_ptr_ && d_ptr_) 
         {
-            cudaMemcpyAsync(d_ptr_, h_ptr_, size_ * sizeof(T), cudaMemcpyHostToDevice, stream);
-            CHECK_CUDA_ERROR("syncHostToDeviceAsync failed");
+            CUDA_CHECK(cudaMemcpyAsync(d_ptr_, h_ptr_, size_ * sizeof(T), cudaMemcpyHostToDevice, stream));
         }
     }
 
@@ -146,8 +141,7 @@ public:
     {
         if (h_ptr_ && d_ptr_)
         {
-            cudaMemcpyAsync(h_ptr_, d_ptr_, size_ * sizeof(T), cudaMemcpyDeviceToHost, stream);
-            CHECK_CUDA_ERROR("syncDeviceToHostAsync failed");
+            CUDA_CHECK(cudaMemcpyAsync(h_ptr_, d_ptr_, size_ * sizeof(T), cudaMemcpyDeviceToHost, stream));
         }
     }
 
@@ -172,8 +166,7 @@ public:
         if (empty())
             return;
         std::memset(h_ptr_, value, size_ * sizeof(T));
-        cudaMemsetAsync(d_ptr_, value, size_ * sizeof(T), stream);
-        CHECK_CUDA_ERROR("cudaMemsetAsync failed");
+        CUDA_CHECK(cudaMemsetAsync(d_ptr_, value, size_ * sizeof(T), stream));
     }
 
     void constant_val_set(const T& val, cudaStream_t stream = 0)
@@ -182,7 +175,7 @@ public:
             return;
         std::fill(h_ptr_, h_ptr_ + size_, val);
         CUDA_LAUNCH_SHAREDMEM_STREAM(constant_val_set_kernel<T>, dim3{ size_ }, dim3{ 512 }, 0, stream)(d_ptr_, size_, val);
-        CHECK_CUDA_ERROR("constant_val_set kernel failed");
+        CUDA_KERNEL_LAUNCH_CHECK();
     }
 
 private:
@@ -192,13 +185,12 @@ private:
         {
             for (size_t i = 0; i < size_; ++i)
                 h_ptr_[i].~T();
-            cudaFreeHost(h_ptr_);
+            CUDA_CHECK(cudaFreeHost(h_ptr_));
             h_ptr_ = nullptr;
         }
         if (d_ptr_) 
         {
-            cudaFree(d_ptr_);
-            CHECK_CUDA_ERROR("cudaFree failed");
+            CUDA_CHECK(cudaFree(d_ptr_));
             d_ptr_ = nullptr;
         }
         size_ = 0;

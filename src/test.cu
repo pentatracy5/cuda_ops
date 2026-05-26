@@ -43,7 +43,7 @@ namespace elementwise_add
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
 				CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -67,7 +67,7 @@ namespace elementwise_add
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -79,7 +79,7 @@ namespace elementwise_add
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -133,19 +133,13 @@ namespace reduce_sum
 		{
 			void* d_temp_storage = nullptr;
 			size_t temp_storage_bytes = 0;
-			cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
-			cudaMalloc(&d_temp_storage, temp_storage_bytes);
-			CHECK_CUDA_ERROR("cudaMalloc failed");
+			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), output.device(), N));
+			CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 			for (size_t i = 0; i < NREPEATS; i++)
-			{
-				cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), output.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
-			}
+				CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), output.device(), N));
 
-			cudaFree(d_temp_storage);
-			CHECK_CUDA_ERROR("cudaFree failed");
+			CUDA_CHECK(cudaFree(d_temp_storage));
 		}
 		else
 		{
@@ -153,18 +147,16 @@ namespace reduce_sum
 			dim3 threads_per_block;
 			int shared_mem_bytes;
 			reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
-
-			int temp_size = N_BLOCKS(num_threads, threads_per_block).x;
-			CudaMirrorBuffer<float> temp_storage(temp_size);
-
 			if (8 == version)
 			{
+				int temp_size = N_BLOCKS(num_threads, threads_per_block).x;
+				CudaMirrorBuffer<float> temp_storage(temp_size);
 				for (size_t i = 0; i < NREPEATS; i++)
 				{
 					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
-					CHECK_CUDA_ERROR("run kernel failed");
+					CUDA_KERNEL_LAUNCH_CHECK();
 					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
-					CHECK_CUDA_ERROR("run kernel failed");
+					CUDA_KERNEL_LAUNCH_CHECK();
 				}
 			}
 			else
@@ -173,7 +165,7 @@ namespace reduce_sum
 				{
 					output.memset(0);
 					CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-					CHECK_CUDA_ERROR("run kernel failed");
+					CUDA_KERNEL_LAUNCH_CHECK();
 				}
 			}
 		}
@@ -201,9 +193,9 @@ namespace reduce_sum
 			for (size_t i = 0; i < WARMUP; i++)
 			{
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 		else
@@ -212,7 +204,7 @@ namespace reduce_sum
 			{
 				output.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 
@@ -227,9 +219,9 @@ namespace reduce_sum
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), temp_storage.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], threads_per_block, threads_per_block, shared_mem_bytes)(temp_storage.device(), output.device(), temp_size);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 		else
@@ -238,7 +230,7 @@ namespace reduce_sum
 			{
 				output.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(reduce_sum::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), N);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 
@@ -251,24 +243,16 @@ namespace reduce_sum
 
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
-		cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N);
-		CHECK_CUDA_ERROR("run kernel failed");
-		cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		CHECK_CUDA_ERROR("cudaMalloc failed");
+		CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
+		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 		for (size_t i = 0; i < WARMUP; i++)
-		{
-			cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 
 		cudaEventRecord(start);
 
 		for (size_t i = 0; i < NREPEATS; i++)
-		{
-			cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
@@ -276,8 +260,7 @@ namespace reduce_sum
 		cudaEventDestroy(start);
 		cudaEventDestroy(stop);
 
-		cudaFree(d_temp_storage);
-		CHECK_CUDA_ERROR("cudaFree failed");
+		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
@@ -304,19 +287,13 @@ namespace histogram
 		{
 			void* d_temp_storage = nullptr;
 			size_t temp_storage_bytes = 0;
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
-			CHECK_CUDA_ERROR("run kernel failed");
-			cudaMalloc(&d_temp_storage, temp_storage_bytes);
-			CHECK_CUDA_ERROR("cudaMalloc failed");
+			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
+			CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 			for (size_t i = 0; i < NREPEATS; i++)
-			{
-				cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
-				CHECK_CUDA_ERROR("run kernel failed");
-			}
+				CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), bin.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
-			cudaFree(d_temp_storage);
-			CHECK_CUDA_ERROR("cudaFree failed");
+			CUDA_CHECK(cudaFree(d_temp_storage));
 		}
 		else
 		{
@@ -329,7 +306,7 @@ namespace histogram
 			{
 				bin.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -352,7 +329,7 @@ namespace histogram
 		{
 			bin.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -365,7 +342,7 @@ namespace histogram
 		{
 			bin.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -377,24 +354,16 @@ namespace histogram
 
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
-		cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
-		CHECK_CUDA_ERROR("run kernel failed");
-		cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		CHECK_CUDA_ERROR("cudaMalloc failed");
+		CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
+		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 		for (size_t i = 0; i < WARMUP; i++)
-		{
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
 		cudaEventRecord(start);
 
 		for (size_t i = 0; i < NREPEATS; i++)
-		{
-			cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
@@ -402,8 +371,7 @@ namespace histogram
 		cudaEventDestroy(start);
 		cudaEventDestroy(stop);
 
-		cudaFree(d_temp_storage);
-		CHECK_CUDA_ERROR("cudaFree failed");
+		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
@@ -439,19 +407,13 @@ namespace copy_if
 			LessThan select_op(COMPARE);
 			void* d_temp_storage = nullptr;
 			size_t temp_storage_bytes = 0;
-			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op);
-			CHECK_CUDA_ERROR("run kernel failed");
-			cudaMalloc(&d_temp_storage, temp_storage_bytes);
-			CHECK_CUDA_ERROR("cudaMalloc failed");
+			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op));
+			CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 			for (size_t i = 0; i < NREPEATS; i++)
-			{
-				cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op);
-				CHECK_CUDA_ERROR("run kernel failed");
-			}
+				CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), dst.device(), dst_size.device(), N, select_op));
 
-			cudaFree(d_temp_storage);
-			CHECK_CUDA_ERROR("cudaFree failed");
+			CUDA_CHECK(cudaFree(d_temp_storage));
 		}
 		else
 		{
@@ -464,7 +426,7 @@ namespace copy_if
 			{
 				dst_size.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -489,7 +451,7 @@ namespace copy_if
 		{
 			dst_size.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -502,7 +464,7 @@ namespace copy_if
 		{
 			dst_size.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -516,24 +478,16 @@ namespace copy_if
 		LessThan select_op(COMPARE);
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
-		cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
-		CHECK_CUDA_ERROR("run kernel failed");
-		cudaMalloc(&d_temp_storage, temp_storage_bytes);
-		CHECK_CUDA_ERROR("cudaMalloc failed");
+		CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
+		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
 
 		for (size_t i = 0; i < WARMUP; i++)
-		{
-			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 
 		cudaEventRecord(start);
 
 		for (size_t i = 0; i < NREPEATS; i++)
-		{
-			cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op);
-			CHECK_CUDA_ERROR("run kernel failed");
-		}
+			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
@@ -541,8 +495,7 @@ namespace copy_if
 		cudaEventDestroy(start);
 		cudaEventDestroy(stop);
 
-		cudaFree(d_temp_storage);
-		CHECK_CUDA_ERROR("cudaFree failed");
+		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
 		ref_size.to_host();
 		float time_ref = milliseconds / NREPEATS;
@@ -578,7 +531,7 @@ namespace elementwise_gelu
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 	}
 
@@ -598,7 +551,7 @@ namespace elementwise_gelu
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -610,7 +563,7 @@ namespace elementwise_gelu
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -626,7 +579,7 @@ namespace elementwise_gelu
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(start);
@@ -634,7 +587,7 @@ namespace elementwise_gelu
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -789,7 +742,7 @@ namespace quantize
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
 				CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -811,7 +764,7 @@ namespace quantize
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -823,7 +776,7 @@ namespace quantize
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -900,7 +853,7 @@ namespace softmax
 			for (size_t i = 0; i < NREPEATS; i++)
 			{
 				CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -922,7 +875,7 @@ namespace softmax
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -934,7 +887,7 @@ namespace softmax
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -992,8 +945,7 @@ namespace gemv_col_major
 			for (int i = 0; i < NREPEATS; i++)
 			{
 				output.memset(0);
-				cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), output.device(), 1);
-				CHECK_CUDA_ERROR("cublasSgemv failed");
+				CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), output.device(), 1));
 			}
 			cublasDestroy(handle);
 		}
@@ -1007,7 +959,7 @@ namespace gemv_col_major
 			{
 				output.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -1037,7 +989,7 @@ namespace gemv_col_major
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -1050,7 +1002,7 @@ namespace gemv_col_major
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -1067,8 +1019,7 @@ namespace gemv_col_major
 		{
 			ref.memset(0);
 			// 按照 https://docs.nvidia.com/cuda/archive/13.1.0/cublas/index.html , 这里应该可以传入 alpha.device() 和 beta.device()，但是实际运行时会异常
-			cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1);
-			CHECK_CUDA_ERROR("cublasSgemv failed");
+			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
 		cudaEventRecord(start);
@@ -1076,8 +1027,7 @@ namespace gemv_col_major
 		for (int i = 0; i < NREPEATS; i++)
 		{
 			ref.memset(0);
-			cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1);
-			CHECK_CUDA_ERROR("cublasSgemv failed");
+			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
 		cudaEventRecord(stop);
@@ -1124,8 +1074,7 @@ namespace gemv_row_major
 			for (int i = 0; i < NREPEATS; i++)
 			{
 				output.memset(0);
-				cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), output.device(), 1);
-				CHECK_CUDA_ERROR("cublasSgemv failed");
+				CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), output.device(), 1));
 			}
 			cublasDestroy(handle);
 		}
@@ -1139,7 +1088,7 @@ namespace gemv_row_major
 			{
 				output.memset(0);
 				CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-				CHECK_CUDA_ERROR("run kernel failed");
+				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
 	}
@@ -1169,7 +1118,7 @@ namespace gemv_row_major
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		float milliseconds = 0;
@@ -1182,7 +1131,7 @@ namespace gemv_row_major
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
-			CHECK_CUDA_ERROR("run kernel failed");
+			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		cudaEventRecord(stop);
@@ -1198,8 +1147,7 @@ namespace gemv_row_major
 		for (int i = 0; i < WARMUP; i++)
 		{
 			ref.memset(0);
-			cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1);
-			CHECK_CUDA_ERROR("cublasSgemv failed");
+			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
 		cudaEventRecord(start);
@@ -1207,8 +1155,7 @@ namespace gemv_row_major
 		for (int i = 0; i < NREPEATS; i++)
 		{
 			ref.memset(0);
-			cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1);
-			CHECK_CUDA_ERROR("cublasSgemv failed");
+			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
 		cudaEventRecord(stop);

@@ -48,6 +48,9 @@
     <CudaCompile Include="src\gemv_row_major.cu">
       <Filter>src</Filter>
     </CudaCompile>
+    <CudaCompile Include="src\CudaTimer.cu">
+      <Filter>src</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\kernel.cuh">
@@ -69,6 +72,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\types.cuh">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\CudaTimer.cuh">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
