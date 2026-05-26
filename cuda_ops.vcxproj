@@ -90,12 +90,12 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cublas.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudnn.lib;cublas.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA\CUDNN\v9.22\lib\13.2\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <Include>$(SolutionDir)include;%(Include)</Include>
+      <Include>$(SolutionDir)include;C:\Program Files\NVIDIA\CUDNN\v9.22\include\13.2;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" -Xcompiler "/wd 4819" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>
@@ -117,12 +117,12 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cublas.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>cudnn.lib;cublas.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files\NVIDIA\CUDNN\v9.22\lib\13.2\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <Include>$(SolutionDir)include;%(Include)</Include>
+      <Include>$(SolutionDir)include;C:\Program Files\NVIDIA\CUDNN\v9.22\include\13.2;%(Include)</Include>
       <AdditionalOptions>--std=c++17 -Xcompiler "/std:c++17" -Xcompiler="/Zc:preprocessor" -Xcompiler "/wd 4819" %(AdditionalOptions)</AdditionalOptions>
       <FastMath>false</FastMath>
       <GenerateRelocatableDeviceCode>true</GenerateRelocatableDeviceCode>

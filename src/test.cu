@@ -8,8 +8,9 @@
 #include <define.cuh>
 #include <config.cuh>
 #include <utils.cuh>
-#include <cub/cub.cuh>
 #include <cublas_v2.h>
+#include <cub/cub.cuh>
+#include <cudnn.h>
 
 namespace elementwise_add
 {
@@ -761,23 +762,16 @@ namespace quantize
 
 namespace softmax
 {
-	void softmax_cpu(float* h_input, float* h_output)
+	void cudnn_softmax(const float* d_input, float* d_output, int N, int C, cudnnHandle_t handle, cudnnTensorDescriptor_t& tensorDesc)
 	{
-		float row_max;
-		float row_exp_sum;
-		for (int j = 0; j < ROWS; j++)
-		{
-			row_max = FLT_MIN;
-			for (int k = 0; k < COLS; k++)
-				row_max = max(row_max, h_input[j * COLS + k]);
-			for (int k = 0; k < COLS; k++)
-				h_output[j * COLS + k] = expf(h_input[j * COLS + k] - row_max);
-			row_exp_sum = 0.0f;
-			for (int k = 0; k < COLS; k++)
-				row_exp_sum += h_output[j * COLS + k];
-			for (int k = 0; k < COLS; k++)
-				h_output[j * COLS + k] /= row_exp_sum;
-		}
+		CUDNN_CHECK(cudnnSetTensor4dDescriptor(tensorDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, N, C, 1, 1));
+		// https://docs.nvidia.com/deeplearning/cudnn/backend/latest/api/cudnn-ops-library.html#cudnnsoftmaxalgorithm-t
+		// CUDNN_SOFTMAX_ACCURATE:
+		//  This implementation scales each point of the softmax input domain by its maximum value to avoid potential floating point overflows in the softmax evaluation.
+		// alpha, beta:
+		//  Inputs.Pointers to scaling factors(in host memory) used to blend the computation result with prior value in the output layer as "dstValue = alpha[0] * result + beta[0] * priorDstValue"
+		float alpha = 1.0f, beta = 0.0f;
+		CUDNN_CHECK(cudnnSoftmaxForward(handle, CUDNN_SOFTMAX_ACCURATE, CUDNN_SOFTMAX_MODE_CHANNEL, &alpha, tensorDesc, d_input, &beta, tensorDesc, d_output));
 	}
 
 	void run(unsigned int version)
@@ -790,8 +784,14 @@ namespace softmax
 
 		if constexpr (PROFILEREF)
 		{
+			cudnnHandle_t cudnn;
+			CUDNN_CHECK(cudnnCreate(&cudnn));
+			cudnnTensorDescriptor_t tensorDesc;
+			CUDNN_CHECK(cudnnCreateTensorDescriptor(&tensorDesc)); 
 			for (int i = 0; i < NREPEATS; i++)
-				softmax_cpu(input.host(), output.host());
+				cudnn_softmax(input.device(), output.device(), ROWS, COLS, cudnn, tensorDesc);
+			CUDNN_CHECK(cudnnDestroyTensorDescriptor(tensorDesc));
+			CUDNN_CHECK(cudnnDestroy(cudnn));
 		}
 		else
 		{
@@ -842,18 +842,25 @@ namespace softmax
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
-		for (int i = 0; i < WARMUP; i++)
-			softmax_cpu(input.host(), ref.host());
+		cudnnHandle_t cudnn;
+		CUDNN_CHECK(cudnnCreate(&cudnn));
+		cudnnTensorDescriptor_t tensorDesc;
+		CUDNN_CHECK(cudnnCreateTensorDescriptor(&tensorDesc));
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		for (int i = 0; i < WARMUP; i++)
+			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
+
+		timer.tic();
 
 		for (int i = 0; i < NREPEATS; i++)
-			softmax_cpu(input.host(), ref.host());
+			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		milliseconds = timer.toc();
 
-		double time_ref = elapsed.count() / NREPEATS * 1e3;
+		float time_ref = milliseconds / NREPEATS;
+
+		CUDNN_CHECK(cudnnDestroyTensorDescriptor(tensorDesc));
+		CUDNN_CHECK(cudnnDestroy(cudnn));
 
 		compare_array(output.host(), ref.host(), ROWS * COLS, TOLERANCETIGHT);
 
