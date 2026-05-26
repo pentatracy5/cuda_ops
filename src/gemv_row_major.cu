@@ -14,7 +14,7 @@ namespace gemv_row_major
 
     int get_bytes_transferred(const int rows, const int cols)
     {
-        return rows * cols + cols + rows;
+        return (rows * cols + cols + rows) * sizeof(float);
     }
 
     void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes)
