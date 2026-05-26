@@ -9,6 +9,7 @@
 #include <config.cuh>
 #include <utils.cuh>
 #include <cub/cub.cuh>
+#include <cublas_v2.h>
 
 namespace elementwise_add
 {
@@ -969,20 +970,16 @@ namespace softmax
 
 namespace gemv_col_major
 {
-	void gemv_col_major_cpu(float* m, float* v, float* output)
-	{
-		std::fill(output, output + ROWS, 0.0f);
-		for (size_t col_idx = 0; col_idx < COLS; col_idx++)
-			for (size_t row_idx = 0; row_idx < ROWS; row_idx++)
-				output[row_idx] += m[col_idx * ROWS + row_idx] * v[col_idx];
-	}
-
 	void run(unsigned int version)
 	{
+		CudaMirrorBuffer<float> alpha(1);
+		CudaMirrorBuffer<float> beta(1);
 		CudaMirrorBuffer<float> m(ROWS * COLS);
 		CudaMirrorBuffer<float> v(COLS);
 		CudaMirrorBuffer<float> output(ROWS);
 
+		alpha.constant_val_set(1.0f);
+		beta.constant_val_set(0.0f);
 		random_init_array(m.host(), ROWS * COLS);
 		random_init_array(v.host(), COLS);
 		m.to_device();
@@ -990,8 +987,15 @@ namespace gemv_col_major
 
 		if constexpr (PROFILEREF)
 		{
+			cublasHandle_t handle;
+			cublasCreate(&handle);
 			for (int i = 0; i < NREPEATS; i++)
-				gemv_col_major_cpu(m.host(), v.host(), output.host());
+			{
+				output.memset(0);
+				cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), output.device(), 1);
+				CHECK_CUDA_ERROR("cublasSgemv failed");
+			}
+			cublasDestroy(handle);
 		}
 		else
 		{
@@ -1010,11 +1014,15 @@ namespace gemv_col_major
 
 	void test(unsigned int version)
 	{
+		CudaMirrorBuffer<float> alpha(1);
+		CudaMirrorBuffer<float> beta(1);
 		CudaMirrorBuffer<float> m(ROWS * COLS);
 		CudaMirrorBuffer<float> v(COLS);
 		CudaMirrorBuffer<float> output(ROWS);
 		CudaMirrorBuffer<float> ref(ROWS);
 
+		alpha.constant_val_set(1.0f);
+		beta.constant_val_set(0.0f);
 		random_init_array(m.host(), ROWS * COLS);
 		random_init_array(v.host(), COLS);
 		m.to_device();
@@ -1048,24 +1056,40 @@ namespace gemv_col_major
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&milliseconds, start, stop);
-		cudaEventDestroy(start);
-		cudaEventDestroy(stop);
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
-		for (int i = 0; i < WARMUP; i++)
-			gemv_col_major_cpu(m.host(), v.host(), ref.host());
+		cublasHandle_t handle;
+		cublasCreate(&handle);
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		for (int i = 0; i < WARMUP; i++)
+		{
+			ref.memset(0);
+			// 按照 https://docs.nvidia.com/cuda/archive/13.1.0/cublas/index.html , 这里应该可以传入 alpha.device() 和 beta.device()，但是实际运行时会异常
+			cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1);
+			CHECK_CUDA_ERROR("cublasSgemv failed");
+		}
+
+		cudaEventRecord(start);
 
 		for (int i = 0; i < NREPEATS; i++)
-			gemv_col_major_cpu(m.host(), v.host(), ref.host());
+		{
+			ref.memset(0);
+			cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1);
+			CHECK_CUDA_ERROR("cublasSgemv failed");
+		}
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
 
-		double time_ref = elapsed.count() / NREPEATS * 1e3;
+		ref.to_host();
+		float time_ref = milliseconds / NREPEATS;
+
+		cublasDestroy(handle);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 
 		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
 
@@ -1078,23 +1102,16 @@ namespace gemv_col_major
 
 namespace gemv_row_major
 {
-	void gemv_row_major_cpu(float* m, float* v, float* output)
-	{
-		for (size_t row_idx = 0; row_idx < ROWS; row_idx++)
-		{
-			float res = 0.0f;
-			for (size_t col_idx = 0; col_idx < COLS; col_idx++)
-				res += m[row_idx * COLS + col_idx] * v[col_idx];
-			output[row_idx] = res;
-		}
-	}
-
 	void run(unsigned int version)
 	{
+		CudaMirrorBuffer<float> alpha(1);
+		CudaMirrorBuffer<float> beta(1);
 		CudaMirrorBuffer<float> m(ROWS * COLS);
 		CudaMirrorBuffer<float> v(COLS);
 		CudaMirrorBuffer<float> output(ROWS);
 
+		alpha.constant_val_set(1.0f);
+		beta.constant_val_set(0.0f);
 		random_init_array(m.host(), ROWS * COLS);
 		random_init_array(v.host(), COLS);
 		m.to_device();
@@ -1102,8 +1119,15 @@ namespace gemv_row_major
 
 		if constexpr (PROFILEREF)
 		{
+			cublasHandle_t handle;
+			cublasCreate(&handle);
 			for (int i = 0; i < NREPEATS; i++)
-				gemv_row_major_cpu(m.host(), v.host(), output.host());
+			{
+				output.memset(0);
+				cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), output.device(), 1);
+				CHECK_CUDA_ERROR("cublasSgemv failed");
+			}
+			cublasDestroy(handle);
 		}
 		else
 		{
@@ -1122,11 +1146,15 @@ namespace gemv_row_major
 
 	void test(unsigned int version)
 	{
+		CudaMirrorBuffer<float> alpha(1);
+		CudaMirrorBuffer<float> beta(1);
 		CudaMirrorBuffer<float> m(ROWS * COLS);
 		CudaMirrorBuffer<float> v(COLS);
 		CudaMirrorBuffer<float> output(ROWS);
 		CudaMirrorBuffer<float> ref(ROWS);
 
+		alpha.constant_val_set(1.0f);
+		beta.constant_val_set(0.0f);
 		random_init_array(m.host(), ROWS * COLS);
 		random_init_array(v.host(), COLS);
 		m.to_device();
@@ -1160,24 +1188,39 @@ namespace gemv_row_major
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		cudaEventElapsedTime(&milliseconds, start, stop);
-		cudaEventDestroy(start);
-		cudaEventDestroy(stop);
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
 
-		for (int i = 0; i < WARMUP; i++)
-			gemv_row_major_cpu(m.host(), v.host(), ref.host());
+		cublasHandle_t handle;
+		cublasCreate(&handle);
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		for (int i = 0; i < WARMUP; i++)
+		{
+			ref.memset(0);
+			cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1);
+			CHECK_CUDA_ERROR("cublasSgemv failed");
+		}
+
+		cudaEventRecord(start);
 
 		for (int i = 0; i < NREPEATS; i++)
-			gemv_row_major_cpu(m.host(), v.host(), ref.host());
+		{
+			ref.memset(0);
+			cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1);
+			CHECK_CUDA_ERROR("cublasSgemv failed");
+		}
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		cudaEventRecord(stop);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&milliseconds, start, stop);
 
-		double time_ref = elapsed.count() / NREPEATS * 1e3;
+		ref.to_host();
+		float time_ref = milliseconds / NREPEATS;
+
+		cublasDestroy(handle);
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
 
 		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
 
