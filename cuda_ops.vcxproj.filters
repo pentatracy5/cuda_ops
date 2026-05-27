@@ -36,7 +36,7 @@
     <CudaCompile Include="src\gemv_col_major.cu">
       <Filter>src</Filter>
     </CudaCompile>
-    <CudaCompile Include="src\dropout.cu">
+    <CudaCompile Include="src\elementwise_dropout.cu">
       <Filter>src</Filter>
     </CudaCompile>
     <CudaCompile Include="src\softmax.cu">

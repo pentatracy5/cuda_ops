@@ -13,7 +13,7 @@
   <ItemGroup>
     <CudaCompile Include="src\copy_if.cu" />
     <CudaCompile Include="src\CudaTimer.cu" />
-    <CudaCompile Include="src\dropout.cu" />
+    <CudaCompile Include="src\elementwise_dropout.cu" />
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\elementwise_gelu.cu" />
     <CudaCompile Include="src\gemv_col_major.cu" />
