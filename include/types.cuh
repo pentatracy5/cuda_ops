@@ -3,7 +3,7 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <CudaMirrorBuffer.cuh>
-#include <CudaTimer.cuh>
+#include <Timer.cuh>
 
 struct alignas(16) __half8
 {

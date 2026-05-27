@@ -2,7 +2,6 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include <chrono>
 #include <types.cuh>
 #include <kernel.cuh>
 #include <define.cuh>
@@ -72,8 +71,8 @@ namespace elementwise_add
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -81,7 +80,7 @@ namespace elementwise_add
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		c.to_host();
 		float time = milliseconds / NREPEATS;
@@ -94,16 +93,15 @@ namespace elementwise_add
 			for (int j = 0; j < N; j++)
 				ref_host[j] = a_host[j] + b_host[j];
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		timer.tic_cpu();
 
 		for (int i = 0; i < NREPEATS; i++)
 			for (int j = 0; j < N; j++)
 				ref_host[j] = a_host[j] + b_host[j];
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		milliseconds = timer.toc_cpu();
 
-		double time_ref = elapsed.count() / NREPEATS * 1e3;
+		float time_ref = milliseconds / NREPEATS;
 
 		compare_array(c.host(), ref.host(), N, 0);
 
@@ -204,8 +202,8 @@ namespace reduce_sum
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		if (8 == version)
 		{
@@ -227,7 +225,7 @@ namespace reduce_sum
 			}
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -240,12 +238,12 @@ namespace reduce_sum
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
@@ -320,8 +318,8 @@ namespace histogram
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -330,7 +328,7 @@ namespace histogram
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		bin.to_host();
 		float time = milliseconds / NREPEATS;
@@ -343,12 +341,12 @@ namespace histogram
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
@@ -434,8 +432,8 @@ namespace copy_if
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -444,7 +442,7 @@ namespace copy_if
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		dst.to_host();
 		dst_size.to_host();
@@ -459,12 +457,12 @@ namespace copy_if
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		CUDA_CHECK(cudaFree(d_temp_storage));
 		ref.to_host();
@@ -526,8 +524,8 @@ namespace elementwise_gelu
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -535,7 +533,7 @@ namespace elementwise_gelu
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -549,7 +547,7 @@ namespace elementwise_gelu
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -557,7 +555,7 @@ namespace elementwise_gelu
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
@@ -610,7 +608,7 @@ namespace stream_schedule
 			ref_host[j] = a_host[j] + b_host[j];
 
 		float milliseconds = 0;
-		CudaTimer timer;
+		Timer timer;
 
 		std::vector<cudaStream_t> streams(MAXNUMSTREAMS);
 		for (auto& stream : streams)
@@ -623,12 +621,12 @@ namespace stream_schedule
 			for (size_t i = 0; i < WARMUP; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
-			timer.tic();
+			timer.tic_gpu();
 
 			for (size_t i = 0; i < NREPEATS; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
-			milliseconds = timer.toc();
+			milliseconds = timer.toc_gpu();
 
 			float time = milliseconds / NREPEATS;
 
@@ -724,8 +722,8 @@ namespace quantize
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -733,7 +731,7 @@ namespace quantize
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -741,15 +739,14 @@ namespace quantize
 		for (int i = 0; i < WARMUP; i++)
 			quantize_cpu(input.host(), ref.host());
 
-		auto begin = std::chrono::high_resolution_clock::now();
+		timer.tic_cpu();
 
 		for (int i = 0; i < NREPEATS; i++)
 			quantize_cpu(input.host(), ref.host());
 
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - begin;
+		milliseconds = timer.toc_cpu();
 
-		double time_ref = elapsed.count() / NREPEATS * 1e3;
+		float time_ref = milliseconds / NREPEATS;
 
 		compare_array(output.host(), ref.host(), ROWS * COLS, 0.f);
 
@@ -828,8 +825,8 @@ namespace softmax
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -837,7 +834,7 @@ namespace softmax
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -850,12 +847,12 @@ namespace softmax
 		for (int i = 0; i < WARMUP; i++)
 			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (int i = 0; i < NREPEATS; i++)
 			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		float time_ref = milliseconds / NREPEATS;
 
@@ -943,8 +940,8 @@ namespace gemv_col_major
 		}
 
 		float milliseconds = 0;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -953,7 +950,7 @@ namespace gemv_col_major
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -968,7 +965,7 @@ namespace gemv_col_major
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (int i = 0; i < NREPEATS; i++)
 		{
@@ -976,7 +973,7 @@ namespace gemv_col_major
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
@@ -1064,8 +1061,8 @@ namespace gemv_row_major
 		}
 
 		float milliseconds = 0.0f;
-		CudaTimer timer;
-		timer.tic();
+		Timer timer;
+		timer.tic_gpu();
 
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
@@ -1074,7 +1071,7 @@ namespace gemv_row_major
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		output.to_host();
 		float time = milliseconds / NREPEATS;
@@ -1088,7 +1085,7 @@ namespace gemv_row_major
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
-		timer.tic();
+		timer.tic_gpu();
 
 		for (int i = 0; i < NREPEATS; i++)
 		{
@@ -1096,7 +1093,7 @@ namespace gemv_row_major
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
 
-		milliseconds = timer.toc();
+		milliseconds = timer.toc_gpu();
 
 		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;

@@ -12,7 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\copy_if.cu" />
-    <CudaCompile Include="src\CudaTimer.cu" />
+    <CudaCompile Include="src\Timer.cu" />
     <CudaCompile Include="src\elementwise_dropout.cu" />
     <CudaCompile Include="src\elementwise_add.cu" />
     <CudaCompile Include="src\elementwise_gelu.cu" />
@@ -33,7 +33,7 @@
   <ItemGroup>
     <ClInclude Include="include\config.cuh" />
     <ClInclude Include="include\CudaMirrorBuffer.cuh" />
-    <ClInclude Include="include\CudaTimer.cuh" />
+    <ClInclude Include="include\Timer.cuh" />
     <ClInclude Include="include\define.cuh" />
     <ClInclude Include="include\kernel.cuh" />
     <ClInclude Include="include\test.cuh" />
