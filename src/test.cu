@@ -60,49 +60,42 @@ namespace elementwise_add
 		a.to_device();
 		b.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		elementwise_add::get_kernel_launch_params(N, version, num_threads, threads_per_block);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_add::kernels[version], num_threads, threads_per_block)(a.device(), b.device(), c.device(), N);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		c.to_host();
 		float time = milliseconds / NREPEATS;
 
 		float* a_host = a.host();
 		float* b_host = b.host();
 		float* ref_host = ref.host();
-
 		for (int i = 0; i < WARMUP; i++)
 			for (int j = 0; j < N; j++)
 				ref_host[j] = a_host[j] + b_host[j];
 
 		timer.tic_cpu();
-
 		for (int i = 0; i < NREPEATS; i++)
 			for (int j = 0; j < N; j++)
 				ref_host[j] = a_host[j] + b_host[j];
-
 		milliseconds = timer.toc_cpu();
-
 		float time_ref = milliseconds / NREPEATS;
 
+		c.to_host();
 		compare_array(c.host(), ref.host(), N, 0);
 
 		std::cout << "elementwise add\t\tversion " << version << "\tREF" << std::endl;
@@ -173,14 +166,15 @@ namespace reduce_sum
 		random_init_array(input.host(), N);
 		input.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		reduce_sum::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		int temp_size = N_BLOCKS(num_threads, threads_per_block).x;
 		CudaMirrorBuffer<float> temp_storage(temp_size);
-
 		if (8 == version)
 		{
 			for (size_t i = 0; i < WARMUP; i++)
@@ -201,10 +195,7 @@ namespace reduce_sum
 			}
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		if (8 == version)
 		{
 			for (size_t i = 0; i < NREPEATS; i++)
@@ -224,31 +215,26 @@ namespace reduce_sum
 				CUDA_KERNEL_LAUNCH_CHECK();
 			}
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
 		CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
 
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, input.device(), ref.device(), N));
-
 		milliseconds = timer.toc_gpu();
-
-		CUDA_CHECK(cudaFree(d_temp_storage));
-		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
+		CUDA_CHECK(cudaFree(d_temp_storage));
+
+		output.to_host();
+		ref.to_host();
 		compare_array(output.host(), ref.host(), 1, TOLERANCELOOSE);
 
 		std::cout << "reduce sum\t\tversion " << version << "\tREF" << std::endl;
@@ -305,11 +291,13 @@ namespace histogram
 		random_init_array(data.host(), N);
 		data.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		histogram::get_kernel_launch_params(N, BINSIZE, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			bin.memset(0);
@@ -317,41 +305,33 @@ namespace histogram
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			bin.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(histogram::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(data.device(), bin.device(), N, BINSIZE, LOWERLEVEL, UPPERLEVEL);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		bin.to_host();
 		float time = milliseconds / NREPEATS;
 
 		void* d_temp_storage = nullptr;
 		size_t temp_storage_bytes = 0;
 		CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
 
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceHistogram::HistogramEven(d_temp_storage, temp_storage_bytes, data.device(), ref.device(), BINSIZE + 1, LOWERLEVEL, UPPERLEVEL, N));
-
 		milliseconds = timer.toc_gpu();
-
-		CUDA_CHECK(cudaFree(d_temp_storage));
-		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
+		CUDA_CHECK(cudaFree(d_temp_storage));
+
+		bin.to_host();
+		ref.to_host();
 		compare_array(bin.host(), ref.host(), BINSIZE, 0);
 
 		std::cout << "histogram\t\tversion " << version << "\tREF" << std::endl;
@@ -419,11 +399,13 @@ namespace copy_if
 		random_init_array(src.host(), N);
 		src.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		copy_if::get_kernel_launch_params(N, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			dst_size.memset(0);
@@ -431,21 +413,14 @@ namespace copy_if
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			dst_size.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(copy_if::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(src.device(), dst.device(), dst_size.device(), N, COMPARE);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		dst.to_host();
-		dst_size.to_host();
 		float time = milliseconds / NREPEATS;
 
 		LessThan select_op(COMPARE);
@@ -453,22 +428,21 @@ namespace copy_if
 		size_t temp_storage_bytes = 0;
 		CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
-
 		for (size_t i = 0; i < WARMUP; i++)
 			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
 
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 			CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, src.device(), ref.device(), ref_size.device(), N, select_op));
-
 		milliseconds = timer.toc_gpu();
-
-		CUDA_CHECK(cudaFree(d_temp_storage));
-		ref.to_host();
-		ref_size.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
+		CUDA_CHECK(cudaFree(d_temp_storage));
+
+		dst.to_host();
+		dst_size.to_host();
+		ref.to_host();
+		ref_size.to_host();
 		compare_array(dst_size.host(), ref_size.host(), 1, 0);
 		std::sort(dst.host(), dst.host() + dst_size.host()[0]);
 		std::sort(ref.host(), ref.host() + ref_size.host()[0]);
@@ -513,34 +487,29 @@ namespace elementwise_gelu
 		random_init_array(input.host(), N);
 		input.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		elementwise_gelu::get_kernel_launch_params(N, version, num_threads, threads_per_block);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), N);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		int ref_version = sizeof(elementwise_gelu::kernels) / sizeof(elementwise_gelu::kernels[0]) - 1;
 		elementwise_gelu::get_kernel_launch_params(N, ref_version, num_threads, threads_per_block);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
@@ -548,18 +517,16 @@ namespace elementwise_gelu
 		}
 
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH(elementwise_gelu::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), N);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
+		output.to_host();
+		ref.to_host();
 		compare_array(output.host(), ref.host(), N, TOLERANCETIGHT);
 
 		std::cout << "elementwise gelu\tversion " << version << "\t\tREF" << std::endl;
@@ -622,12 +589,9 @@ namespace stream_schedule
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
 
 			timer.tic_gpu();
-
 			for (size_t i = 0; i < NREPEATS; i++)
 				stream_schedule::kernels[version](streams.data(), num_streams, a.host(), b.host(), c.host(), a.device(), b.device(), c.device(), N);
-
 			milliseconds = timer.toc_gpu();
-
 			float time = milliseconds / NREPEATS;
 
 			compare_array(c.host(), ref.host(), N, 0.f);
@@ -710,44 +674,38 @@ namespace quantize
 		random_init_array(input.host(), ROWS * COLS);
 		input.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		quantize::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(quantize::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS, QMIN, QMAX);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		for (int i = 0; i < WARMUP; i++)
 			quantize_cpu(input.host(), ref.host());
 
 		timer.tic_cpu();
-
 		for (int i = 0; i < NREPEATS; i++)
 			quantize_cpu(input.host(), ref.host());
-
 		milliseconds = timer.toc_cpu();
-
 		float time_ref = milliseconds / NREPEATS;
 
+		output.to_host();
 		compare_array(output.host(), ref.host(), ROWS * COLS, 0.f);
 
 		std::cout << "quantize\t\tversion " << version << "\tREF" << std::endl;
@@ -813,52 +771,45 @@ namespace softmax
 		random_init_array(input.host(), ROWS * COLS);
 		input.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		softmax::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			CUDA_LAUNCH_SHAREDMEM(softmax::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(input.device(), output.device(), ROWS, COLS);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		cudnnHandle_t cudnn;
 		CUDNN_CHECK(cudnnCreate(&cudnn));
 		cudnnTensorDescriptor_t tensorDesc;
 		CUDNN_CHECK(cudnnCreateTensorDescriptor(&tensorDesc));
-
 		for (int i = 0; i < WARMUP; i++)
 			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
 
 		timer.tic_gpu();
-
 		for (int i = 0; i < NREPEATS; i++)
 			cudnn_softmax(input.device(), ref.device(), ROWS, COLS, cudnn, tensorDesc);
-
 		milliseconds = timer.toc_gpu();
-
 		float time_ref = milliseconds / NREPEATS;
 
 		CUDNN_CHECK(cudnnDestroyTensorDescriptor(tensorDesc));
 		CUDNN_CHECK(cudnnDestroy(cudnn));
 
+		output.to_host();
 		compare_array(output.host(), ref.host(), ROWS * COLS, TOLERANCETIGHT);
 
 		std::cout << "softmax\t\t\tversion " << version << "\tREF" << std::endl;
@@ -927,11 +878,13 @@ namespace gemv_col_major
 		m.to_device();
 		v.to_device();
 
+		float milliseconds = 0;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		gemv_col_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			output.memset(0);
@@ -939,25 +892,18 @@ namespace gemv_col_major
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_col_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		cublasHandle_t handle;
 		cublasCreate(&handle);
-
 		for (int i = 0; i < WARMUP; i++)
 		{
 			ref.memset(0);
@@ -966,20 +912,18 @@ namespace gemv_col_major
 		}
 
 		timer.tic_gpu();
-
 		for (int i = 0; i < NREPEATS; i++)
 		{
 			ref.memset(0);
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_N, ROWS, COLS, alpha.host(), m.device(), ROWS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
 		cublasDestroy(handle);
 
+		output.to_host();
+		ref.to_host();
 		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
 
 		std::cout << "gemv col major\t\tversion " << version << "\tREF" << std::endl;
@@ -1048,11 +992,13 @@ namespace gemv_row_major
 		m.to_device();
 		v.to_device();
 
+		float milliseconds = 0.0f;
+		Timer timer;
+
 		dim3 num_threads;
 		dim3 threads_per_block;
 		int shared_mem_bytes;
 		gemv_row_major::get_kernel_launch_params(ROWS, COLS, version, num_threads, threads_per_block, shared_mem_bytes);
-
 		for (size_t i = 0; i < WARMUP; i++)
 		{
 			output.memset(0);
@@ -1060,25 +1006,18 @@ namespace gemv_row_major
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
-		float milliseconds = 0.0f;
-		Timer timer;
 		timer.tic_gpu();
-
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
 			output.memset(0);
 			CUDA_LAUNCH_SHAREDMEM(gemv_row_major::kernels[version], num_threads, threads_per_block, shared_mem_bytes)(m.device(), v.device(), output.device(), ROWS, COLS);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		output.to_host();
 		float time = milliseconds / NREPEATS;
 
 		cublasHandle_t handle;
 		cublasCreate(&handle);
-
 		for (int i = 0; i < WARMUP; i++)
 		{
 			ref.memset(0);
@@ -1086,20 +1025,18 @@ namespace gemv_row_major
 		}
 
 		timer.tic_gpu();
-
 		for (int i = 0; i < NREPEATS; i++)
 		{
 			ref.memset(0);
 			CUBLAS_CHECK(cublasSgemv(handle, CUBLAS_OP_T, COLS, ROWS, alpha.host(), m.device(), COLS, v.device(), 1, beta.host(), ref.device(), 1));
 		}
-
 		milliseconds = timer.toc_gpu();
-
-		ref.to_host();
 		float time_ref = milliseconds / NREPEATS;
 
 		cublasDestroy(handle);
 
+		output.to_host();
+		ref.to_host(); 
 		compare_array(output.host(), ref.host(), ROWS, TOLERANCEMEDIUM);
 
 		std::cout << "gemv row major\t\tversion " << version << "\tREF" << std::endl;
