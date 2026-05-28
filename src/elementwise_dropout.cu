@@ -91,7 +91,8 @@ namespace elementwise_dropout
         if constexpr (rtype == QUASI)
         {
             curandStateScrambledSobol32_t states;
-            int vector_idx = idx % dir_vec_dim;
+            int stride = gridDim.x * blockDim.x * 4;
+            int vector_idx = int(float(idx) / stride * dir_vec_dim);
             curand_init(dir_vecs[vector_idx], scramble_constants[vector_idx], idx, &states);
             output[idx] = curand_uniform(&states) < p ? 0.0f : input[idx] * scale;
         }
