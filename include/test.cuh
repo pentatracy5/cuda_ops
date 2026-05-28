@@ -59,3 +59,9 @@ namespace gemv_row_major
 	void run(unsigned int version);
 	void test(unsigned int version);
 }
+
+namespace elementwise_dropout
+{
+	void run(unsigned int version);
+	void test(unsigned int version);
+}

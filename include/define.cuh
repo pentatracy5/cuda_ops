@@ -72,6 +72,16 @@ T __shfl_sync(unsigned mask, T var, int srcLane, int width = 32);
         }                                                                        \
     } while (0)
 
+#define CURAND_CHECK(call)                                                       \
+    do {                                                                         \
+        curandStatus_t status = call;                                            \
+        if (status != CURAND_STATUS_SUCCESS) {                                   \
+            std::cerr << "cuRAND error: "                                        \
+                      << " at " << __FILE__ << ":" << __LINE__ << std::endl;     \
+            exit(EXIT_FAILURE);                                                  \
+        }                                                                        \
+    } while (0)
+
 #define FETCH_FLOAT2(var) (reinterpret_cast<float2*>(&(var))[0])
 #define FETCH_FLOAT4(var) (reinterpret_cast<float4*>(&(var))[0])
 #define FETCH_HALF2(var) (reinterpret_cast<__half2*>(&(var))[0])

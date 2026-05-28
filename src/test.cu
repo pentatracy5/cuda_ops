@@ -8,6 +8,7 @@
 #include <config.cuh>
 #include <utils.cuh>
 #include <cublas_v2.h>
+#include <curand_kernel.h>
 #include <cub/cub.cuh>
 #include <cudnn.h>
 
@@ -1042,6 +1043,97 @@ namespace gemv_row_major
 		std::cout << "gemv row major\t\tversion " << version << "\tREF" << std::endl;
 		std::cout << "Memory Bandwidth:\t" << gemv_row_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time << " GB/s\t" << gemv_row_major::get_bytes_transferred(ROWS, COLS) / 1e6 / time_ref << " GB/s" << std::endl;
 		std::cout << "Achieved GFLOPS:\t" << gemv_row_major::get_FLOPs(ROWS, COLS) / 1e6 / time << " GFLOPS\t" << gemv_row_major::get_FLOPs(ROWS, COLS) / 1e6 / time_ref << " GFLOPS" << std::endl;
+		std::cout << std::endl;
+	}
+}
+
+namespace elementwise_dropout
+{
+	struct Equal
+	{
+		float compare;
+		__host__ __device__ __forceinline__ Equal(float compare) : compare(compare) {}
+		__host__ __device__ __forceinline__ bool operator()(const float& a) const { return (a == compare); }
+	};
+
+	void run(unsigned int version) {}
+
+	void test(unsigned int version)
+	{
+		curandDirectionVectors32_t* h_dir_vecs;
+		unsigned int* h_scramble_constants;
+		curandDirectionVectors32_t* d_dir_vecs;
+		unsigned int* d_scramble_constants;
+		CUDA_CHECK(cudaMalloc(&d_dir_vecs, DIRVECDIM * sizeof(curandDirectionVectors32_t)));
+		CUDA_CHECK(cudaMalloc(&d_scramble_constants, DIRVECDIM * sizeof(unsigned int)));
+		CudaMirrorBuffer<float> input(N);
+		CudaMirrorBuffer<float> output(N);
+		CudaMirrorBuffer<float> ref(N);
+
+		CURAND_CHECK(curandGetDirectionVectors32(&h_dir_vecs, CURAND_SCRAMBLED_DIRECTION_VECTORS_32_JOEKUO6));
+		CURAND_CHECK(curandGetScrambleConstants32(&h_scramble_constants));
+		random_init_array(input.host(), N);
+		CUDA_CHECK(cudaMemcpy(d_dir_vecs, h_dir_vecs, DIRVECDIM * sizeof(curandDirectionVectors32_t), cudaMemcpyHostToDevice));
+		CUDA_CHECK(cudaMemcpy(d_scramble_constants, h_scramble_constants, DIRVECDIM * sizeof(unsigned int), cudaMemcpyHostToDevice));
+		input.to_device();
+
+		float milliseconds = 0;
+		Timer timer;
+
+		dim3 num_threads;
+		dim3 threads_per_block;
+		elementwise_dropout::get_kernel_launch_params(N, version, num_threads, threads_per_block);
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N);
+			CUDA_KERNEL_LAUNCH_CHECK();
+		}
+
+		timer.tic_gpu();
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N);
+			CUDA_KERNEL_LAUNCH_CHECK();
+		}
+		milliseconds = timer.toc_gpu();
+		float time = milliseconds / NREPEATS;
+
+		int ref_version = sizeof(elementwise_dropout::kernels) / sizeof(elementwise_dropout::kernels[0]) - 1;
+		elementwise_dropout::get_kernel_launch_params(N, ref_version, num_threads, threads_per_block);
+		for (size_t i = 0; i < WARMUP; i++)
+		{
+			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N);
+			CUDA_KERNEL_LAUNCH_CHECK();
+		}
+
+		timer.tic_gpu();
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N);
+			CUDA_KERNEL_LAUNCH_CHECK();
+		}
+		milliseconds = timer.toc_gpu();
+		float time_ref = milliseconds / NREPEATS;
+
+		CUDA_CHECK(cudaFree(d_dir_vecs));
+		CUDA_CHECK(cudaFree(d_scramble_constants));
+
+		CudaMirrorBuffer<float> dst(N);
+		CudaMirrorBuffer<int> dst_size(1);
+		Equal select_op(0.0f);
+		void* d_temp_storage = nullptr;
+		size_t temp_storage_bytes = 0;
+		CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, output.device(), dst.device(), dst_size.device(), N, select_op));
+		CUDA_CHECK(cudaMalloc(&d_temp_storage, temp_storage_bytes));
+		CUDA_CHECK(cub::DeviceSelect::If(d_temp_storage, temp_storage_bytes, output.device(), dst.device(), dst_size.device(), N, select_op));
+		CUDA_CHECK(cudaFree(d_temp_storage));
+
+		dst_size.to_host();
+		std::cout << "(dropout ratio:\t" << float(dst_size.host()[0]) / N << ")" << std::endl;
+
+		std::cout << "elementwise dropout\tversion " << version << "\tREF" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << elementwise_dropout::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_dropout::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Achieved GFLOPS:\t" << elementwise_dropout::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_dropout::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
 		std::cout << std::endl;
 	}
 }

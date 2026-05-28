@@ -5,12 +5,12 @@
 
 namespace histogram 
 {
-    int get_FLOPs(const int size)
+    long long get_FLOPs(const long long size)
     {
         return 2 * size;
     }
 
-    int get_bytes_transferred(const int size, const int bin_size)
+    long long get_bytes_transferred(const long long size, const long long bin_size)
     {
         return size * sizeof(float) + 2 * bin_size * sizeof(int);
     }

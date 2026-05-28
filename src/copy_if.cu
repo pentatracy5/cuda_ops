@@ -5,12 +5,12 @@
 
 namespace copy_if 
 {
-    int get_FLOPs(const int size)
+    long long get_FLOPs(const long long size)
     {
         return size;
     }
 
-    int get_bytes_transferred(const int size)
+    long long get_bytes_transferred(const long long size)
     {
         return size * sizeof(float) + 2 * sizeof(int);
     }

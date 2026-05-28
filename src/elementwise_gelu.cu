@@ -5,12 +5,12 @@
 
 namespace elementwise_gelu 
 {
-    int get_FLOPs(const int size)
+    long long get_FLOPs(const long long size)
     {
         return 9 * size;
     }
 
-    int get_bytes_transferred(const int size)
+    long long get_bytes_transferred(const long long size)
     {
         return 2 * size * sizeof(__half);
     }

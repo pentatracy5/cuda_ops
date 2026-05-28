@@ -7,12 +7,12 @@
 
 namespace gemv_row_major
 {
-    int get_FLOPs(const int rows, const int cols)
+    long long get_FLOPs(const long long rows, const long long cols)
     {
         return 2 * rows * cols;
     }
 
-    int get_bytes_transferred(const int rows, const int cols)
+    long long get_bytes_transferred(const long long rows, const long long cols)
     {
         return (rows * cols + cols + rows * 2) * sizeof(float);
     }

@@ -3,12 +3,13 @@
 #include <cuda_runtime.h>
 #include <types.cuh>
 #include <config.cuh>
+#include <curand_kernel.h>
 
 namespace elementwise_add 
 {
-	int get_FLOPs(const int size);
+	long long get_FLOPs(const long long size);
 
-	int get_bytes_transferred(const int size);
+	long long get_bytes_transferred(const long long size);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
@@ -25,9 +26,9 @@ namespace elementwise_add
 
 namespace reduce_sum
 {
-	int get_FLOPs(const int size);
+	long long get_FLOPs(const long long size);
 
-	int get_bytes_transferred(const int size);
+	long long get_bytes_transferred(const long long size);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -56,9 +57,9 @@ namespace reduce_sum
 
 namespace histogram
 {
-	int get_FLOPs(const int size);
+	long long get_FLOPs(const long long size);
 
-	int get_bytes_transferred(const int size, const int bin_size);
+	long long get_bytes_transferred(const long long size, const long long bin_size);
 
 	void get_kernel_launch_params(const int size, const int bin_size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -73,9 +74,9 @@ namespace histogram
 
 namespace copy_if
 {
-	int get_FLOPs(const int size);
+	long long get_FLOPs(const long long size);
 
-	int get_bytes_transferred(const int size);
+	long long get_bytes_transferred(const long long size);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -94,9 +95,9 @@ namespace copy_if
 
 namespace elementwise_gelu
 {
-	int get_FLOPs(const int size);
+	long long get_FLOPs(const long long size);
 
-	int get_bytes_transferred(const int size);
+	long long get_bytes_transferred(const long long size);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
@@ -126,9 +127,9 @@ namespace stream_schedule
 
 namespace quantize
 {
-	int get_FLOPs(const int rows, const int cols);
+	long long get_FLOPs(const long long rows, const long long cols);
 
-	int get_bytes_transferred(const int rows, const int cols);
+	long long get_bytes_transferred(const long long rows, const long long cols);
 
 	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -142,9 +143,9 @@ namespace quantize
 
 namespace softmax
 {
-	int get_FLOPs(const int rows, const int cols);
+	long long get_FLOPs(const long long rows, const long long cols);
 
-	int get_bytes_transferred(const int rows, const int cols);
+	long long get_bytes_transferred(const long long rows, const long long cols);
 
 	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -157,9 +158,9 @@ namespace softmax
 
 namespace gemv_col_major
 {
-	int get_FLOPs(const int rows, const int cols);
+	long long get_FLOPs(const long long rows, const long long cols);
 
-	int get_bytes_transferred(const int rows, const int cols);
+	long long get_bytes_transferred(const long long rows, const long long cols);
 
 	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -176,9 +177,9 @@ namespace gemv_col_major
 
 namespace gemv_row_major
 {
-	int get_FLOPs(const int rows, const int cols);
+	long long get_FLOPs(const long long rows, const long long cols);
 
-	int get_bytes_transferred(const int rows, const int cols);
+	long long get_bytes_transferred(const long long rows, const long long cols);
 
 	void get_kernel_launch_params(const int rows, const int cols, const unsigned int version, dim3& num_threads, dim3& threads_per_block, int& shared_mem_bytes);
 
@@ -187,4 +188,19 @@ namespace gemv_row_major
 	using Kernel = decltype(&v0);
 
 	static const Kernel kernels[]{ v0 };
+}
+
+namespace elementwise_dropout
+{
+	long long get_FLOPs(const long long size);
+
+	long long get_bytes_transferred(const long long size);
+
+	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
+
+	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size);
+
+	using Kernel = decltype(&v_ref);
+
+	static const Kernel kernels[]{ v_ref };
 }

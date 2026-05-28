@@ -20,3 +20,5 @@ constexpr int MAXNUMSTREAMS = 4;
 constexpr QuantizeType QUANTIZETYPE = ASYMMETRIC;
 constexpr float QMAX = 127;
 constexpr float QMIN = -128;
+constexpr float P = 0.5f;
+constexpr int DIRVECDIM = 20000;

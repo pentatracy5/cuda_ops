@@ -7,12 +7,12 @@
 
 namespace softmax
 {
-    int get_FLOPs(const int rows, const int cols)
+    long long get_FLOPs(const long long rows, const long long cols)
     {
         return rows * ((cols - 1) * 2 + 4 * cols); // 对于每一行，reduce max/sum 均是 cols - 1 FLOPs，expf 和 / 粗略认为是 4 * cols FLOPs
     }
 
-    int get_bytes_transferred(const int rows, const int cols)
+    long long get_bytes_transferred(const long long rows, const long long cols)
     {
         return rows * cols * sizeof(float) * 2;
     }
