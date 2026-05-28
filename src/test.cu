@@ -1132,7 +1132,7 @@ namespace elementwise_dropout
 		std::cout << "(dropout ratio:\t" << float(dst_size.host()[0]) / N << ")" << std::endl;
 
 		std::cout << "elementwise dropout\tversion " << version << "\tREF" << std::endl;
-		std::cout << "Memory Bandwidth:\t" << elementwise_dropout::get_bytes_transferred(N) / 1e6 / time << " GB/s\t" << elementwise_dropout::get_bytes_transferred(N) / 1e6 / time_ref << " GB/s" << std::endl;
+		std::cout << "Memory Bandwidth:\t" << elementwise_dropout::get_bytes_transferred(N, DIRVECDIM) / 1e6 / time << " GB/s\t" << elementwise_dropout::get_bytes_transferred(N, DIRVECDIM) / 1e6 / time_ref << " GB/s" << std::endl;
 		std::cout << "Achieved GFLOPS:\t" << elementwise_dropout::get_FLOPs(N) / 1e6 / time << " GFLOPS\t" << elementwise_dropout::get_FLOPs(N) / 1e6 / time_ref << " GFLOPS" << std::endl;
 		std::cout << std::endl;
 	}

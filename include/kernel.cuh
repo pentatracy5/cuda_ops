@@ -194,13 +194,15 @@ namespace elementwise_dropout
 {
 	long long get_FLOPs(const long long size);
 
-	long long get_bytes_transferred(const long long size);
+	long long get_bytes_transferred(const long long size, const long long dir_vec_dim);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
+	__global__ void v0(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim);
+
 	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim);
 
-	using Kernel = decltype(&v_ref);
+	using Kernel = decltype(&v0);
 
-	static const Kernel kernels[]{ v_ref };
+	static const Kernel kernels[]{ v0, v_ref };
 }
