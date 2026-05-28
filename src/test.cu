@@ -1064,6 +1064,7 @@ namespace elementwise_dropout
 		unsigned int* h_scramble_constants;
 		curandDirectionVectors32_t* d_dir_vecs;
 		unsigned int* d_scramble_constants;
+		CudaMirrorBuffer<float> seed(max(WARMUP, NREPEATS));
 		CudaMirrorBuffer<float> input(N);
 		CudaMirrorBuffer<float> output(N);
 		CudaMirrorBuffer<float> ref(N);
@@ -1074,6 +1075,11 @@ namespace elementwise_dropout
 		CURAND_CHECK(curandGetScrambleConstants32(&h_scramble_constants));
 		CUDA_CHECK(cudaMemcpy(d_dir_vecs, h_dir_vecs, DIRVECDIM * sizeof(curandDirectionVectors32_t), cudaMemcpyHostToDevice));
 		CUDA_CHECK(cudaMemcpy(d_scramble_constants, h_scramble_constants, DIRVECDIM * sizeof(unsigned int), cudaMemcpyHostToDevice));
+		curandGenerator_t gen;
+		CURAND_CHECK(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT));
+		CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(gen, SEED));
+		CURAND_CHECK(curandGenerateUniform(gen, seed.device(), seed.size()));
+		CURAND_CHECK(curandDestroyGenerator(gen));
 		random_init_array(input.host(), N);
 		input.to_device();
 
@@ -1085,14 +1091,14 @@ namespace elementwise_dropout
 		elementwise_dropout::get_kernel_launch_params(N, version, num_threads, threads_per_block);
 		for (size_t i = 0; i < WARMUP; i++)
 		{
-			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM);
+			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM, seed.device() + i);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		timer.tic_gpu();
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
-			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM);
+			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM, seed.device() + i);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 		milliseconds = timer.toc_gpu();
@@ -1102,14 +1108,14 @@ namespace elementwise_dropout
 		elementwise_dropout::get_kernel_launch_params(N, ref_version, num_threads, threads_per_block);
 		for (size_t i = 0; i < WARMUP; i++)
 		{
-			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM);
+			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM, seed.device() + i);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 
 		timer.tic_gpu();
 		for (size_t i = 0; i < NREPEATS; i++)
 		{
-			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM);
+			CUDA_LAUNCH(elementwise_dropout::kernels[ref_version], num_threads, threads_per_block)(input.device(), ref.device(), P, d_dir_vecs, d_scramble_constants, N, DIRVECDIM, seed.device() + i);
 			CUDA_KERNEL_LAUNCH_CHECK();
 		}
 		milliseconds = timer.toc_gpu();

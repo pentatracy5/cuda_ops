@@ -198,11 +198,13 @@ namespace elementwise_dropout
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
-	__global__ void v0(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim);
+	template <RandType rtype>
+	__global__ void v0(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed);
 
-	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim);
+	template <RandType rtype>
+	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed);
 
-	using Kernel = decltype(&v0);
+	using Kernel = decltype(&v0<RANDTYPE>);
 
-	static const Kernel kernels[]{ v0, v_ref };
+	static const Kernel kernels[]{ v0<RANDTYPE>, v_ref<RANDTYPE> };
 }

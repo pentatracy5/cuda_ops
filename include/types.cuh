@@ -18,6 +18,12 @@ enum QuantizeType
 	ASYMMETRIC = 1
 };
 
+enum RandType
+{
+	PSEUDO = 0,
+	QUASI = 1
+};
+
 template <typename T>
 struct MaxOp
 {
