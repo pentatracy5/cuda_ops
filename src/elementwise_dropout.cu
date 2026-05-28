@@ -24,12 +24,12 @@ namespace elementwise_dropout
         return;
     }
 
-    __global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size)
+    __global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim)
     {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= size) return;
         curandStateScrambledSobol32_t states;
-        int vector_idx = idx % 20000;
+        int vector_idx = idx % dir_vec_dim;
         curand_init(dir_vecs[vector_idx], scramble_constants[vector_idx], idx, &states);
         float sample = curand_uniform(&states);
         output[idx] = sample < p ? 0.0f : input[idx] / (1.0f - p);

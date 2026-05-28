@@ -198,7 +198,7 @@ namespace elementwise_dropout
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
-	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size);
+	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim);
 
 	using Kernel = decltype(&v_ref);
 
