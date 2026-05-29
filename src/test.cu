@@ -1056,7 +1056,42 @@ namespace elementwise_dropout
 		__host__ __device__ __forceinline__ bool operator()(const float& a) const { return (a == compare); }
 	};
 
-	void run(unsigned int version) {}
+	void run(unsigned int version)
+	{
+		curandDirectionVectors32_t* h_dir_vecs;
+		unsigned int* h_scramble_constants;
+		curandDirectionVectors32_t* d_dir_vecs;
+		unsigned int* d_scramble_constants;
+		CudaMirrorBuffer<GetRandStateType<RANDTYPE>::Type> states(N);
+		CudaMirrorBuffer<float> input(N);
+		CudaMirrorBuffer<float> output(N);
+		CudaMirrorBuffer<float> ref(N);
+
+		CUDA_CHECK(cudaMalloc(&d_dir_vecs, DIRVECDIM * sizeof(curandDirectionVectors32_t)));
+		CUDA_CHECK(cudaMalloc(&d_scramble_constants, DIRVECDIM * sizeof(unsigned int)));
+		CURAND_CHECK(curandGetDirectionVectors32(&h_dir_vecs, CURAND_SCRAMBLED_DIRECTION_VECTORS_32_JOEKUO6));
+		CURAND_CHECK(curandGetScrambleConstants32(&h_scramble_constants));
+		CUDA_CHECK(cudaMemcpy(d_dir_vecs, h_dir_vecs, DIRVECDIM * sizeof(curandDirectionVectors32_t), cudaMemcpyHostToDevice));
+		CUDA_CHECK(cudaMemcpy(d_scramble_constants, h_scramble_constants, DIRVECDIM * sizeof(unsigned int), cudaMemcpyHostToDevice));
+		CUDA_LAUNCH(elementwise_dropout::setup_states<RANDTYPE>, dim3{ N }, dim3{ 512 })(states.device(), N, d_dir_vecs, d_scramble_constants, SEED, DIRVECDIM);
+		CUDA_KERNEL_LAUNCH_CHECK();
+		random_init_array(input.host(), N);
+		input.to_device();
+
+		if constexpr (PROFILEREF)
+			version = sizeof(elementwise_dropout::kernels) / sizeof(elementwise_dropout::kernels[0]) - 1;
+		dim3 num_threads;
+		dim3 threads_per_block;
+		elementwise_dropout::get_kernel_launch_params(N, version, num_threads, threads_per_block);
+		for (size_t i = 0; i < NREPEATS; i++)
+		{
+			CUDA_LAUNCH(elementwise_dropout::kernels[version], num_threads, threads_per_block)(input.device(), output.device(), P, states.device(), N);
+			CUDA_KERNEL_LAUNCH_CHECK();
+		}
+
+		CUDA_CHECK(cudaFree(d_dir_vecs));
+		CUDA_CHECK(cudaFree(d_scramble_constants));
+	}
 
 	void test(unsigned int version)
 	{
