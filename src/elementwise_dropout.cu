@@ -55,16 +55,16 @@ namespace elementwise_dropout
             while (idx < size - 3)
             {
                 float4 reg = FETCH_FLOAT4(input[idx]);
-                reg.x = curand_uniform(&state) < p ? 0.0f : reg.x * scale;
-                reg.y = curand_uniform(&state) < p ? 0.0f : reg.y * scale;
-                reg.z = curand_uniform(&state) < p ? 0.0f : reg.z * scale;
-                reg.w = curand_uniform(&state) < p ? 0.0f : reg.w * scale;
+                reg.x = float(curand_uniform(&state) >= p) * reg.x * scale;
+                reg.y = float(curand_uniform(&state) >= p) * reg.y * scale;
+                reg.z = float(curand_uniform(&state) >= p) * reg.z * scale;
+                reg.w = float(curand_uniform(&state) >= p) * reg.w * scale;
                 FETCH_FLOAT4(output[idx]) = reg;
                 idx += stride;
             }
             while (idx < size)
             {
-                output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+                output[idx] = float(curand_uniform(&state) >= p) * input[idx] * scale;
                 idx += 1;
             }
             states[gid] = state;
@@ -76,16 +76,16 @@ namespace elementwise_dropout
             {
                 float4 reg = FETCH_FLOAT4(input[idx]);
                 float4 sample = curand_uniform4(&state);
-                reg.x = sample.x < p ? 0.0f : reg.x * scale;
-                reg.y = sample.y < p ? 0.0f : reg.y * scale;
-                reg.z = sample.z < p ? 0.0f : reg.z * scale;
-                reg.w = sample.w < p ? 0.0f : reg.w * scale;
+                reg.x = float(sample.x >= p) * reg.x * scale;
+                reg.y = float(sample.y >= p) * reg.y * scale;
+                reg.z = float(sample.z >= p) * reg.z * scale;
+                reg.w = float(sample.w >= p) * reg.w * scale;
                 FETCH_FLOAT4(output[idx]) = reg;
                 idx += stride;
             }
             while (idx < size)
             {
-                output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+                output[idx] = float(curand_uniform(&state) >= p) * input[idx] * scale;
                 idx += 1;
             }
             states[gid] = state;
@@ -102,13 +102,13 @@ namespace elementwise_dropout
         if constexpr (rtype == QUASI)
         {
             typename GetRandStateType<rtype>::Type state = states[idx];
-            output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+            output[idx] = float(curand_uniform(&state) >= p) * input[idx] * scale;
             states[idx] = state;
         }
         else
         {
             typename GetRandStateType<rtype>::Type state = states[idx];
-            output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+            output[idx] = float(curand_uniform(&state) >= p) * input[idx] * scale;
             states[idx] = state;
         }
     }
