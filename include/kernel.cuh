@@ -194,15 +194,18 @@ namespace elementwise_dropout
 {
 	long long get_FLOPs(const long long size);
 
-	long long get_bytes_transferred(const long long size, const long long dir_vec_dim);
+	long long get_bytes_transferred(const long long size, const dim3 num_threads);
 
 	void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block);
 
 	template <RandType rtype>
-	__global__ void v0(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed);
+	__global__ void setup_states(GetRandStateType<rtype>::Type* states, const int size, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int seed, const int dir_vec_dim);
 
 	template <RandType rtype>
-	__global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed);
+	__global__ void v0(float* input, float* output, const float p, GetRandStateType<rtype>::Type* states, const int size);
+
+	template <RandType rtype>
+	__global__ void v_ref(float* input, float* output, const float p, GetRandStateType<rtype>::Type* states, const int size);
 
 	using Kernel = decltype(&v0<RANDTYPE>);
 

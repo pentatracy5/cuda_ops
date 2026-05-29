@@ -11,12 +11,9 @@ namespace elementwise_dropout
         return 64 * size; // not accurate 
     }
 
-    long long get_bytes_transferred(const long long size, const long long dir_vec_dim)
+    long long get_bytes_transferred(const long long size, const dim3 num_threads)
     {
-        if constexpr (RANDTYPE == QUASI)
-            return size * 2 * sizeof(float) + min(size, dir_vec_dim) * (sizeof(curandDirectionVectors32_t) + sizeof(unsigned int));
-        else
-            return size * 2 * sizeof(float) + sizeof(float);
+        return size * 2 * sizeof(float) + (num_threads.x * num_threads.y * num_threads.z) * 2 * sizeof(GetRandStateType<RANDTYPE>::Type);
     }
 
     void get_kernel_launch_params(const int size, const unsigned int version, dim3& num_threads, dim3& threads_per_block)
@@ -24,48 +21,61 @@ namespace elementwise_dropout
         threads_per_block = 512;
         if (0 == version)
             num_threads = (size / 4 + 31) / 32;
-        else if((sizeof(kernels) / sizeof(kernels[0]) - 1) == version)
+        else if ((sizeof(kernels) / sizeof(kernels[0]) - 1) == version)
             num_threads = size;
         return;
     }
 
     template <RandType rtype>
-    __global__ void v0(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed)
+    __global__ void setup_states(GetRandStateType<rtype>::Type* states, const int size, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int seed, const int dir_vec_dim)
     {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx >= size) return;
+        if constexpr (rtype == QUASI)
+        {
+            int vector_idx = int(float(idx) / size * dir_vec_dim);
+            curand_init(dir_vecs[vector_idx], scramble_constants[vector_idx], idx, states + idx);
+        }
+        else
+            curand_init(seed, idx, 0, states + idx);
+    }
+    template __global__ void setup_states<RANDTYPE>(GetRandStateType<RANDTYPE>::Type*, const int, curandDirectionVectors32_t*, unsigned int*, const int, const int);
+
+    template <RandType rtype>
+    __global__ void v0(float* input, float* output, const float p, GetRandStateType<rtype>::Type* states, const int size)
+    {
+        int gid = blockIdx.x * blockDim.x + threadIdx.x;
+        if (gid >= size) return;
+        int idx = gid * 4;
         int stride = gridDim.x * blockDim.x * 4;
         float scale = 1.0f / (1.0f - p);
         if constexpr (rtype == QUASI)
         {
-            int vector_idx = int(float(idx) / stride * dir_vec_dim);
-            curandStateScrambledSobol32_t states;
-            curand_init(dir_vecs[vector_idx], scramble_constants[vector_idx], idx, &states);
-            idx *= 4;
+            typename GetRandStateType<rtype>::Type state = states[gid];
             while (idx < size - 3)
             {
                 float4 reg = FETCH_FLOAT4(input[idx]);
-                reg.x = curand_uniform(&states) < p ? 0.0f : reg.x * scale;
-                reg.y = curand_uniform(&states) < p ? 0.0f : reg.y * scale;
-                reg.z = curand_uniform(&states) < p ? 0.0f : reg.z * scale;
-                reg.w = curand_uniform(&states) < p ? 0.0f : reg.w * scale;
+                reg.x = curand_uniform(&state) < p ? 0.0f : reg.x * scale;
+                reg.y = curand_uniform(&state) < p ? 0.0f : reg.y * scale;
+                reg.z = curand_uniform(&state) < p ? 0.0f : reg.z * scale;
+                reg.w = curand_uniform(&state) < p ? 0.0f : reg.w * scale;
                 FETCH_FLOAT4(output[idx]) = reg;
                 idx += stride;
             }
             while (idx < size)
             {
-                output[idx] = curand_uniform(&states) < p ? 0.0f : input[idx] * scale;
+                output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
                 idx += 1;
             }
+            states[gid] = state;
         }
         else
         {
-            curandStatePhilox4_32_10_t states;
-            curand_init(*seed * ULLONG_MAX, idx, 0, &states);
-            idx *= 4;
+            typename GetRandStateType<rtype>::Type state = states[gid];
             while (idx < size - 3)
             {
                 float4 reg = FETCH_FLOAT4(input[idx]);
-                float4 sample = curand_uniform4(&states);
+                float4 sample = curand_uniform4(&state);
                 reg.x = sample.x < p ? 0.0f : reg.x * scale;
                 reg.y = sample.y < p ? 0.0f : reg.y * scale;
                 reg.z = sample.z < p ? 0.0f : reg.z * scale;
@@ -75,34 +85,32 @@ namespace elementwise_dropout
             }
             while (idx < size)
             {
-                output[idx] = curand_uniform(&states) < p ? 0.0f : input[idx] * scale;
+                output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
                 idx += 1;
             }
+            states[gid] = state;
         }
     }
-    template __global__ void v0<RANDTYPE>(float*, float*, const float, curandDirectionVectors32_t*, unsigned int*, const int, const int, const float*);
+    template __global__ void v0<RANDTYPE>(float*, float*, const float, GetRandStateType<RANDTYPE>::Type*, const int);
 
     template <RandType rtype>
-    __global__ void v_ref(float* input, float* output, const float p, curandDirectionVectors32_t* dir_vecs, unsigned int* scramble_constants, const int size, const int dir_vec_dim, const float* seed)
+    __global__ void v_ref(float* input, float* output, const float p, GetRandStateType<rtype>::Type* states, const int size)
     {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= size) return;
         float scale = 1.0f / (1.0f - p);
         if constexpr (rtype == QUASI)
         {
-            curandStateScrambledSobol32_t states;
-            int stride = gridDim.x * blockDim.x * 4;
-            int vector_idx = int(float(idx) / stride * dir_vec_dim);
-            curand_init(dir_vecs[vector_idx], scramble_constants[vector_idx], idx, &states);
-            output[idx] = curand_uniform(&states) < p ? 0.0f : input[idx] * scale;
+            typename GetRandStateType<rtype>::Type state = states[idx];
+            output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+            states[idx] = state;
         }
         else
         {
-            curandStatePhilox4_32_10_t states;
-            curand_init(*seed * ULLONG_MAX, idx, 0, &states);
-            output[idx] = curand_uniform(&states) < p ? 0.0f : input[idx] * scale;
+            typename GetRandStateType<rtype>::Type state = states[idx];
+            output[idx] = curand_uniform(&state) < p ? 0.0f : input[idx] * scale;
+            states[idx] = state;
         }
     }
-    template __global__ void v_ref<RANDTYPE>(float*, float*, const float, curandDirectionVectors32_t*, unsigned int*, const int, const int, const float*);
-
+    template __global__ void v_ref<RANDTYPE>(float*, float*, const float, GetRandStateType<RANDTYPE>::Type*, const int);
 }

@@ -23,4 +23,4 @@ constexpr float QMIN = -128;
 constexpr float P = 0.5f;
 constexpr int DIRVECDIM = 16384;
 constexpr unsigned long long SEED = 1234ULL;
-constexpr RandType RANDTYPE = QUASI;
+constexpr RandType RANDTYPE = PSEUDO;
